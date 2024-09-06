@@ -1,0 +1,2950 @@
+:org_mode_options:
+#+TODO: ACTIVE | DISABLED
+#+STARTUP: indent
+#+STARTUP: latexpreview
+#+STARTUP: inlineimages
+#+STARTUP: overview
+#+OPTIONS: ^:nil
+:END:
+
+* Explanation
+The site: https://projecteuler.net/  has some great math programming problems on
+it. They are fun to solve and more fun when done in Odin Lang https://odin-lang.org/
+
+If any of these below problems are solved in the most optimal way, that is
+purely by accident =)
+
+Also, some might not work, but they did at one point
+Also also, *most* are super mathy, just fyi
+
+#+begin_src emacs-lisp :tangle no
+(setq org-format-latex-options '(:foreground default :background default :scale 1.5 :html-foreground "Black" :html-background "Transparent" :html-scale 1.0 :matchers ("begin" "$1" "$" "$$" "\\(" "\\[")))
+#+end_src
+
+* ob-odin.el and gdb testing area
+Last one here is intended to be buggy to show how to use gdb and ob-odin.el
+...
+C-c C-c in code blocks to build and run
+outputs to #+results
+...
+M-x gdb file[.exe]
+or M-x my/gdb to start debugging
+...
+if you are using windows, it's best to debug with visual studio =(
+BUT gdb-msvc might be an option
+#+begin_src odin
+  fmt.println("derp")
+#+end_src
+
+#+begin_src odin :cmpflag -debug
+  if ODIN_DEBUG {
+    fmt.println("debug") // just to show that debugging works
+  }
+  return
+#+end_src
+
+#+begin_src odin :norun t :cmpflag -debug :includes core:math core:fmt
+  // compute first n prime numbers.. 3 inf loops and an addition error (can you find them all?)
+  sum :: proc(arr : []int, n : int) -> int
+  {
+    i : int
+    total : int
+    for i=0; i<n; i+=1 {
+      total =+ arr[i]
+    }
+    return total
+  }
+
+  get_primes :: proc(n : int) -> []int
+  {
+    result : []int = make([]int, n)
+    i := 0
+    x := 2
+    for ; i<n; {
+      if is_prime(x) {
+        result[i] = x
+        i+=1 // note: inf loop here
+        x+=2
+      }
+    }
+    return result
+  }
+
+  is_prime :: proc(x : int) -> bool
+  {
+    if x % 2 == 0 {
+      return false
+    }
+    for i:=3; i <= cast(int)math.sqrt_f32(cast(f32)x); i+=2 {
+      if x % i == 0 {
+        return false
+      }
+    }
+    return true
+  }
+
+  main :: proc() {
+    if ODIN_DEBUG {
+      fmt.println("debug build")
+    }
+
+    n := 10
+    primes := get_primes(n)
+
+    s := sum(primes, n)
+    fmt.printf("The sum of the first %d primes is %s\n", n, s)
+  }
+#+end_src
+
+* random stuff that might be helpful
+#+begin_src odin :main no :comments link :tangle util/util.odin
+package util
+
+import "core:fmt"
+import "core:math"
+import "core:strings"
+
+is_prime :: proc(x : int) -> bool {
+  if x == 1 do return false
+  if x == 2 do return true
+  if x % 2 == 0 {
+    return false;
+  }
+  for i:=3; i <= cast(int)math.sqrt_f32(cast(f32)x); i+=2 {
+    if x % i == 0 {
+      return false;
+    }
+  }
+  return true;
+}
+
+combination_util :: proc(arr: []int, data: []int, start,end,idx,r: int) {
+  if idx == r {
+    for j in 0..<r {
+      fmt.printf("%d ", data[j])
+    }
+    fmt.println()
+    return
+  }
+  for i:=start; i<=end && end-i+1 >= r-idx; i+=1 {
+    data[idx] = arr[i]
+    combination_util(arr, data, i+1, end, idx+1, r)
+  }
+}
+
+print_combination :: proc(arr: []int, r: int) {
+  data : []int = make([]int, r)
+  combination_util(arr, data, 0, len(arr)-1, 0, r)
+}
+
+permute :: proc(str : string, l,r : int, ret : ^[dynamic]string) {
+  if l == r {
+    append(ret, strings.clone(str))
+  } else {
+    for i in l..=r {
+      swap(str, l, i)
+      permute(str, l+1, r, ret)
+      swap(str, l, i)
+    }
+  }
+}
+
+swap :: proc(s : string, i,j : int) {
+  p1 := raw_data(s[i:])
+  p2 := raw_data(s[j:])
+  p1[0], p2[0] = s[j], s[i]
+}
+
+/*
+fmt.println("combination")
+arr : []int = []int{1,2,3,4}
+print_combination(arr, 3)
+
+fmt.println("premutation") 
+ret : [dynamic]string
+permute("hello", 1,2, &ret)
+fmt.println(ret)
+*/
+#+end_src
+
+* Prob 001 - Multiples of 3 and 5
+#+begin_src odin
+limit := 1000
+sum := 0
+for i:=1; i < limit; i+=1 {
+  if (i % 3 == 0) || (i % 5 == 0) {
+    sum += i
+  }
+}
+fmt.println("sum:", sum)
+#+end_src
+
+#+RESULTS:
+: sum: 233168
+
+* Prob 002 - Even Fibonacci Number
+#+begin_src odin
+  sum_even_fibs :: proc(n : i64) -> f64 {
+    sum : f64 = 0
+    prev1 : i64 = 0
+    prev2 : i64 = 1
+    for i:i64=0; i<n; i+=1 {
+      tmp := prev2
+      prev2 = prev1 + prev2
+      if (prev2 > n) do break // don't cnt
+      prev1 = tmp
+      if (prev2 % 2) == 0 {
+        sum += cast(f64)prev2
+      }
+    }
+    return sum
+  }
+
+  result : f64 = sum_even_fibs(4_000_000)
+  fmt.printf("result: %f\n", result)
+#+end_src
+
+#+RESULTS:
+: result: 4613732.000
+
+* Prob 003 - Largest Prime Factor
+#+begin_src odin :var n=1000 :post asValue(name="primes",val=*this*) :results drawer file :file primes.csv
+  make_primes :: proc (n : int) {
+    p := 5
+    for prime_idx:=3; prime_idx<=n; {
+      // prime check
+      is_prime := true
+      if (p % 2 == 0) || (p % 3 == 0) {
+        is_prime = false
+      } else {
+        for i:=5; i * i <= p; {
+          if (p % i == 0) || (p % (i+2) == 0) {
+            is_prime = false
+          }
+          i += 6
+        }
+      }
+
+      // now is_prime tells if p is prime
+      if is_prime {
+        prime_idx += 1
+        fmt.printf(", %d", p)
+        p += 2 // check next possible prime
+      } else {
+        p += 2
+      }
+    }
+    fmt.printf("")
+  }
+
+  fmt.printf("%d, %d", 2, 3)
+
+  // output n more primes
+  make_primes(n)
+#+end_src
+
+#+RESULTS:
+:results:
+#+NAME: primes
+[[file:primes.csv]]
+:end:
+
+#+begin_src odin :var primes=primes :includes core:os core:io core:encoding/csv core:strconv core:strings
+  file,ferr := os.open(primes)
+  if ferr != 0 {
+    fmt.println("error")
+    return
+  }
+  defer os.close(file)
+
+  readr,_ := io.to_reader(os.stream_from_handle(file))
+  csvreadr : csv.Reader
+  csv.reader_init(&csvreadr, readr)
+  strs, err := csv.read(&csvreadr)
+
+  primelist := make(map[int]int)
+  defer delete(primelist)
+
+  for i:=0; i<len(strs); i+=1 {
+    ok : bool
+    primelist[i],ok = strconv.parse_int(strings.trim(strs[i], " "))
+    if !ok {
+      fmt.printf("error")
+    }
+  }
+
+  largest_prime_factor :: proc(n : int, primelist : map[int]int) -> int {
+    // start div by 2, then 3... until you are left with one last "largest" prime then return that
+    mn := n
+    pidx := 0
+    last_p := 0
+    for pidx=0; pidx < len(primelist); {
+      if mn % primelist[pidx] == 0 {
+        mn = mn / primelist[pidx]
+        last_p = pidx
+      } else {
+        pidx += 1
+      }
+    }
+    return cast(int)primelist[last_p]
+  }
+
+  result : int = largest_prime_factor(600851475143, primelist)
+  fmt.printf("result: %d\n", result)
+#+end_src
+
+#+RESULTS:
+: result: 6857
+
+* Prob 004 - Largest Palindrome Product
+#+begin_src odin
+  is_palindrome :: proc(n : int) -> bool {
+    res : bool = true
+
+    tmp := n
+    len_of_number_n := 1
+    for i:=0; tmp >= 10; i+=1 {
+      tmp = tmp/10
+      len_of_number_n += 1
+    }
+
+    str := fmt.tprintf("%d", n)
+    for j:=0; j < len_of_number_n / 2; j+=1 {
+      if (str[j:j+1] != str[len_of_number_n-(j+1):len_of_number_n-j]) {
+        res = false
+      }
+    }
+    return res
+  }
+
+  largest_three_digit_prod_palindrome :: proc() -> int {
+    n1 := 0
+    n2 := 0
+    max := 0
+    for ; n1 < 999; n1+=1 {
+      n2 = 0
+      for ; n2 < 999; n2+=1 {
+        if is_palindrome(n1 * n2) {
+          if n1 * n2 > max do	max = n1*n2
+        }
+      }
+    }
+    return max
+  }
+  n1 := largest_three_digit_prod_palindrome()
+  fmt.printf("result: %d\n", n1)
+#+end_src
+
+#+RESULTS:
+: result: 906609
+
+* Prob 005 - Smallest Multiple
+#+begin_src odin
+  smallest_number_div_by_1_to_20 :: proc () -> int {
+    tmp := 1
+    for ;; {
+      all_div := true
+      for i:=2; i<=20; i+=1 {
+        if tmp % i != 0 {
+          all_div = false
+          break
+        }
+      }
+      if all_div do break
+      tmp += 1
+    }
+    return tmp
+  }
+  n1 := smallest_number_div_by_1_to_20()
+  fmt.printf("result: %d\n", n1)
+#+end_src
+
+#+RESULTS:
+: result: 232792560
+
+* Prob 006 - Sum Square Difference
+#+begin_src odin
+  diff_sum_of_sqr_and_sqr_of_sum :: proc (n : int) -> int {
+    first_sums_of_sqrs := 0
+    first_sqrs_of_sums := 0
+    for i:=1; i<=n; i+=1 {
+      first_sums_of_sqrs += i*i
+      first_sqrs_of_sums += i
+    }
+    first_sqrs_of_sums *= first_sqrs_of_sums
+
+    return abs(first_sqrs_of_sums - first_sums_of_sqrs)
+  }
+
+  n1 := diff_sum_of_sqr_and_sqr_of_sum(100)
+  fmt.printf("result: %d\n", n1)
+#+end_src
+
+#+RESULTS:
+: result: 25164150
+
+* Prob 007 - 10001st prime
+#+begin_src odin
+  big_prime :: proc (n : int) -> int {
+    p := 5
+    for prime_idx:=3; prime_idx<=n; {
+      // prime check
+      is_prime := true
+      if (p % 2 == 0) || (p % 3 == 0) {
+        is_prime = false
+      } else {
+        for i:=5; i * i <= p; {
+          if (p % i == 0) || (p % (i+2) == 0) {
+            is_prime = false
+          }
+          i += 6
+        }
+      }
+
+      // now is_prime tells if p is prime
+      if is_prime {
+        prime_idx += 1
+        p += 2; // check next possible prime
+      } else {
+        p += 2
+      }
+    }
+
+    p -= 2
+    return p
+  }
+
+  n1 := big_prime(10_001); // note: doesn't work for 3rd prime or less
+  fmt.printf("result: %d\n", n1)
+#+end_src
+
+#+RESULTS:
+: result: 104743
+
+* Prob 008 - Largest Product in a Series
+#+begin_src odin :includes core:strings core:strconv
+  bignumstr : string = `
+  73167176531330624919225119674426574742355349194934
+  96983520312774506326239578318016984801869478851843
+  85861560789112949495459501737958331952853208805511
+  12540698747158523863050715693290963295227443043557
+  66896648950445244523161731856403098711121722383113
+  62229893423380308135336276614282806444486645238749
+  30358907296290491560440772390713810515859307960866
+  70172427121883998797908792274921901699720888093776
+  65727333001053367881220235421809751254540594752243
+  52584907711670556013604839586446706324415722155397
+  53697817977846174064955149290862569321978468622482
+  83972241375657056057490261407972968652414535100474
+  82166370484403199890008895243450658541227588666881
+  16427171479924442928230863465674813919123162824586
+  17866458359124566529476545682848912883142607690042
+  24219022671055626321111109370544217506941658960408
+  07198403850962455444362981230987879927244284909188
+  84580156166097919133875499200524063689912560717606
+  05886116467109405077541002256983155200055935729725
+  71636269561882670428252483600823257530420752963450`
+
+  four_product_at :: proc (at : int, n : int, bignumstr : string) -> (prod : int) {
+    str, was := strings.replace(bignumstr, "\n", "", -1)
+    lat := at
+
+    prod = 1
+    for i:=0; i<n; i+=1 {
+      n1, _ := strconv.parse_int(str[lat:lat+1])
+      lat += 1
+      prod *= n1
+    }
+    if was do delete(str)
+    return
+  }
+
+  lmax := 0
+  tmp := 0
+
+  for i:=1; i<=1000-13; i+=1 {
+    tmp = four_product_at(i, 13, bignumstr)
+    if tmp > lmax do lmax = tmp
+  }
+
+  fmt.printf("result: %d\n", lmax)
+#+end_src
+
+#+RESULTS:
+: result: 5377010688
+
+* Prob 009 - Special Pythagorean Triplet
+#+begin_src odin
+  is_pythagorean_triplet :: proc(a,b,c : int) -> bool {
+    if a*a + b*b == c*c do return true
+    return false
+  }
+
+  a,b,c : int
+  for a=0; a<1000; a+=1 {
+    for b=0; b<1000; b+=1 {
+      c = 1000 - a - b
+
+      if c > 0 {
+        if is_pythagorean_triplet(a,b,c) {
+          //fmt.printf("a: %d b: %d c: %d\n", a, b, c)
+          if a!=0 && b!=0 && c!=0 && a<b {
+            fmt.println(a*b*c)
+            break
+          }
+        }
+      }
+    }
+  }
+#+end_src
+
+#+RESULTS:
+: 31875000
+
+* Prob 010 - Summation of Primes
+#+begin_src odin
+  is_prime :: proc (p : int) -> (is_prime : bool) {
+    // prime check
+    is_prime = true
+    if (p % 2 == 0) || (p % 3 == 0) { // start higher than 5!!
+      is_prime = false
+    } else {
+      for i:=5; i * i <= p; {
+        if (p % i == 0) || (p % (i+2) == 0) {
+          is_prime = false
+        }
+        i += 6
+      }
+    }
+    return
+  }
+
+  sum := 17
+  for p:=10; p < 2_000_000; p+=1 {
+    if is_prime(p) do sum += p
+  }
+
+  fmt.printf("sum: %d\n", sum)
+#+end_src
+
+#+RESULTS:
+: sum: 142913828922
+
+* Prob 011 - Largest Product in a Grid
+#+begin_src odin
+  grid : [][]int = {
+    { 08, 02, 22, 97, 38, 15, 00, 40, 00, 75, 04, 05, 07, 78, 52, 12, 50, 77, 91, 08 },
+    { 49, 49, 99, 40, 17, 81, 18, 57, 60, 87, 17, 40, 98, 43, 69, 48, 04, 56, 62, 00 },
+    { 81, 49, 31, 73, 55, 79, 14, 29, 93, 71, 40, 67, 53, 88, 30, 03, 49, 13, 36, 65 },
+    { 52, 70, 95, 23, 04, 60, 11, 42, 69, 24, 68, 56, 01, 32, 56, 71, 37, 02, 36, 91 },
+    { 22, 31, 16, 71, 51, 67, 63, 89, 41, 92, 36, 54, 22, 40, 40, 28, 66, 33, 13, 80 },
+    { 24, 47, 32, 60, 99, 03, 45, 02, 44, 75, 33, 53, 78, 36, 84, 20, 35, 17, 12, 50 },
+    { 32, 98, 81, 28, 64, 23, 67, 10, 26, 38, 40, 67, 59, 54, 70, 66, 18, 38, 64, 70 },
+    { 67, 26, 20, 68, 02, 62, 12, 20, 95, 63, 94, 39, 63, 08, 40, 91, 66, 49, 94, 21 },
+    { 24, 55, 58, 05, 66, 73, 99, 26, 97, 17, 78, 78, 96, 83, 14, 88, 34, 89, 63, 72 },
+    { 21, 36, 23, 09, 75, 00, 76, 44, 20, 45, 35, 14, 00, 61, 33, 97, 34, 31, 33, 95 },
+    { 78, 17, 53, 28, 22, 75, 31, 67, 15, 94, 03, 80, 04, 62, 16, 14, 09, 53, 56, 92 },
+    { 16, 39, 05, 42, 96, 35, 31, 47, 55, 58, 88, 24, 00, 17, 54, 24, 36, 29, 85, 57 },
+    { 86, 56, 00, 48, 35, 71, 89, 07, 05, 44, 44, 37, 44, 60, 21, 58, 51, 54, 17, 58 },
+    { 19, 80, 81, 68, 05, 94, 47, 69, 28, 73, 92, 13, 86, 52, 17, 77, 04, 89, 55, 40 },
+    { 04, 52, 08, 83, 97, 35, 99, 16, 07, 97, 57, 32, 16, 26, 26, 79, 33, 27, 98, 66 },
+    { 88, 36, 68, 87, 57, 62, 20, 72, 03, 46, 33, 67, 46, 55, 12, 32, 63, 93, 53, 69 },
+    { 04, 42, 16, 73, 38, 25, 39, 11, 24, 94, 72, 18, 08, 46, 29, 32, 40, 62, 76, 36 },
+    { 20, 69, 36, 41, 72, 30, 23, 88, 34, 62, 99, 69, 82, 67, 59, 85, 74, 04, 36, 16 },
+    { 20, 73, 35, 29, 78, 31, 90, 01, 74, 31, 49, 71, 48, 86, 81, 16, 23, 57, 05, 54 },
+    { 01, 70, 54, 71, 83, 51, 54, 69, 16, 92, 33, 48, 61, 43, 52, 01, 89, 19, 67, 48 },
+  }
+
+  largest_product_in_grid :: proc(n : int, m : int, num_of_nums : int, grid : [][]int) -> int {
+    prod := 0
+    num := 0
+    for i:=0; i<n; i+=1 {
+      for j:=0; j<m; j+=1 {
+        // for every cell, check all directions
+        num = 1
+        if (j+num_of_nums-1) < m {			    // right
+          for k:=0; k<num_of_nums; k+=1 {
+            num *= grid[i][j+k]
+          }
+        }
+        if num > prod do prod = num
+
+        num = 1
+        if (j+num_of_nums-1) < m && (i+num_of_nums-1) < n { // right and down
+          for k:=0; k<num_of_nums; k+=1 {
+            num *= grid[i+k][j+k]
+          }
+        }
+        if num > prod do prod = num
+
+        num = 1
+        if (i+num_of_nums-1) < n {			    // down
+          for k:=0; k<num_of_nums; k+=1 {
+            num *= grid[i+k][j]
+          }
+        }
+        if num > prod do prod = num
+
+        num = 1
+        if (j+num_of_nums-1) < m && (i-num_of_nums) >= -1 { // right and up
+          for k:=0; k<num_of_nums; k+=1 {
+            num *= grid[i-k][j+k]
+          }
+        }
+        if num > prod do prod = num
+
+      }
+    }
+
+    return prod
+  }
+
+  tmp := largest_product_in_grid(20, 20, 4, grid)
+  fmt.printf("sum: %d\n", tmp)
+#+end_src
+
+#+RESULTS:
+: sum: 70600674
+
+* Prob 012 - Highly Divisible Triangular Number
+#+begin_src odin :var primes=primes :includes core:os core:io core:encoding/csv core:strconv core:strings
+  file,ferr := os.open(primes)
+  if ferr != 0 {
+    fmt.println("error")
+    return
+  }
+  defer os.close(file)
+
+  readr,_ := io.to_reader(os.stream_from_handle(file))
+  csvreadr : csv.Reader
+  csv.reader_init(&csvreadr, readr)
+  strs, err := csv.read(&csvreadr)
+
+  primelist := make(map[int]int)
+  defer delete(primelist)
+
+  for i:=0; i<len(strs); i+=1 {
+    ok : bool
+    primelist[i],ok = strconv.parse_int(strings.trim(strs[i], " "))
+    if !ok {
+      fmt.printf("error")
+    }
+  }
+
+  triangle_number :: proc(n : int) -> (res : int) {
+    // n plus all natural numbers less than n
+    res = 0
+    for i:=n; i>0; i-=1 {
+      res += i
+    }
+    return
+  }
+
+  amount_of_prime_factors :: proc(n : int, primelist : map[int]int) -> map[int]int {
+    // finds the amount of each prime factor (see above), puts into a map (prime_number_index->amount)
+    // start div by 2, then 3...
+    list := make(map[int]int)
+    mn := n
+    pidx := 0
+    for pidx=0; pidx < len(primelist); {
+      for ; mn % primelist[pidx] == 0; {
+        mn = mn / primelist[pidx]
+        if _,ok := list[pidx]; ok {
+          list[pidx] += 1
+        } else {
+          list[pidx] = 1
+        }
+      }
+      pidx += 1
+    }
+    return list
+  }
+
+  num_of_divisors :: proc(n : int, primelist : map[int]int) -> int {
+    // find prime factors
+    // then number of times each prime factor is used, add 1 to each and call it a_subx
+    // then multiply all a_subx together to get the # of divisors
+    list := amount_of_prime_factors(n, primelist)
+    prod := 1
+    for k,v in list {
+      prod *= (v+1)
+    }
+    return prod
+  }
+
+  for i:=1; i < 1<<32; i+=1 {
+    tmp := triangle_number(i)
+    tmp2 := num_of_divisors(tmp, primelist)
+    if tmp2 > 500 {
+      fmt.printf("tri: %d\n", tmp)
+      break
+    }
+  }
+#+end_src
+
+#+RESULTS:
+: tri: 76576500
+
+* Prob 013 - Large Sum
+#+begin_src odin :includes core:strings core:strconv
+  numbers :: `37107287533902102798797998220837590246510135740250
+  46376937677490009712648124896970078050417018260538
+  74324986199524741059474233309513058123726617309629
+  91942213363574161572522430563301811072406154908250
+  23067588207539346171171980310421047513778063246676
+  89261670696623633820136378418383684178734361726757
+  28112879812849979408065481931592621691275889832738
+  44274228917432520321923589422876796487670272189318
+  47451445736001306439091167216856844588711603153276
+  70386486105843025439939619828917593665686757934951
+  62176457141856560629502157223196586755079324193331
+  64906352462741904929101432445813822663347944758178
+  92575867718337217661963751590579239728245598838407
+  58203565325359399008402633568948830189458628227828
+  80181199384826282014278194139940567587151170094390
+  35398664372827112653829987240784473053190104293586
+  86515506006295864861532075273371959191420517255829
+  71693888707715466499115593487603532921714970056938
+  54370070576826684624621495650076471787294438377604
+  53282654108756828443191190634694037855217779295145
+  36123272525000296071075082563815656710885258350721
+  45876576172410976447339110607218265236877223636045
+  17423706905851860660448207621209813287860733969412
+  81142660418086830619328460811191061556940512689692
+  51934325451728388641918047049293215058642563049483
+  62467221648435076201727918039944693004732956340691
+  15732444386908125794514089057706229429197107928209
+  55037687525678773091862540744969844508330393682126
+  18336384825330154686196124348767681297534375946515
+  80386287592878490201521685554828717201219257766954
+  78182833757993103614740356856449095527097864797581
+  16726320100436897842553539920931837441497806860984
+  48403098129077791799088218795327364475675590848030
+  87086987551392711854517078544161852424320693150332
+  59959406895756536782107074926966537676326235447210
+  69793950679652694742597709739166693763042633987085
+  41052684708299085211399427365734116182760315001271
+  65378607361501080857009149939512557028198746004375
+  35829035317434717326932123578154982629742552737307
+  94953759765105305946966067683156574377167401875275
+  88902802571733229619176668713819931811048770190271
+  25267680276078003013678680992525463401061632866526
+  36270218540497705585629946580636237993140746255962
+  24074486908231174977792365466257246923322810917141
+  91430288197103288597806669760892938638285025333403
+  34413065578016127815921815005561868836468420090470
+  23053081172816430487623791969842487255036638784583
+  11487696932154902810424020138335124462181441773470
+  63783299490636259666498587618221225225512486764533
+  67720186971698544312419572409913959008952310058822
+  95548255300263520781532296796249481641953868218774
+  76085327132285723110424803456124867697064507995236
+  37774242535411291684276865538926205024910326572967
+  23701913275725675285653248258265463092207058596522
+  29798860272258331913126375147341994889534765745501
+  18495701454879288984856827726077713721403798879715
+  38298203783031473527721580348144513491373226651381
+  34829543829199918180278916522431027392251122869539
+  40957953066405232632538044100059654939159879593635
+  29746152185502371307642255121183693803580388584903
+  41698116222072977186158236678424689157993532961922
+  62467957194401269043877107275048102390895523597457
+  23189706772547915061505504953922979530901129967519
+  86188088225875314529584099251203829009407770775672
+  11306739708304724483816533873502340845647058077308
+  82959174767140363198008187129011875491310547126581
+  97623331044818386269515456334926366572897563400500
+  42846280183517070527831839425882145521227251250327
+  55121603546981200581762165212827652751691296897789
+  32238195734329339946437501907836945765883352399886
+  75506164965184775180738168837861091527357929701337
+  62177842752192623401942399639168044983993173312731
+  32924185707147349566916674687634660915035914677504
+  99518671430235219628894890102423325116913619626622
+  73267460800591547471830798392868535206946944540724
+  76841822524674417161514036427982273348055556214818
+  97142617910342598647204516893989422179826088076852
+  87783646182799346313767754307809363333018982642090
+  10848802521674670883215120185883543223812876952786
+  71329612474782464538636993009049310363619763878039
+  62184073572399794223406235393808339651327408011116
+  66627891981488087797941876876144230030984490851411
+  60661826293682836764744779239180335110989069790714
+  85786944089552990653640447425576083659976645795096
+  66024396409905389607120198219976047599490197230297
+  64913982680032973156037120041377903785566085089252
+  16730939319872750275468906903707539413042652315011
+  94809377245048795150954100921645863754710598436791
+  78639167021187492431995700641917969777599028300699
+  15368713711936614952811305876380278410754449733078
+  40789923115535562561142322423255033685442488917353
+  44889911501440648020369068063960672322193204149535
+  41503128880339536053299340368006977710650566631954
+  81234880673210146739058568557934581403627822703280
+  82616570773948327592232845941706525094512325230608
+  22918802058777319719839450180888072429661980811197
+  77158542502016545090413245809786882778948721859617
+  72107838435069186155435662884062257473692284509516
+  20849603980134001723930671666823555245252804609722
+  53503534226472524250874054075591789781264330331690`
+
+  strs := strings.split(numbers, "\n")
+  sum : f64 = 0
+  for i:=0; i<len(strs); i+=1 {
+    tmp, ok := strconv.parse_f64(fmt.tprintf("%s.%s", strs[i][0:10], strs[i][10:]))
+    if ok {
+      sum += tmp
+    }
+  }
+  fmt.printf("sum %f\n", sum)
+#+end_src
+
+#+RESULTS:
+: sum 553737623039.088
+
+* Prob 014 - Longest Collatz Sequence
+note: this one takes awhile... TODO speed it up?
+#+begin_src odin
+  one_step :: proc (n : i64) -> i64 {
+    if n % 2 == 0 {
+      return n / 2
+    } else {
+      return 3*n + 1
+    }
+  }
+
+  tmp : i64 =  0
+  cnt :=  0
+  max_chain_cnt :=  0
+  kk : i64 = 0
+  for k: i64 =1_000_000; k >= 2; k-=1 {
+    tmp = k
+    cnt = 0
+    for ; tmp >= 1;  {
+      tmp = one_step(tmp); // one link in the chain
+      cnt += 1
+      if tmp == 1 do break
+    }
+    if cnt > max_chain_cnt  {
+      max_chain_cnt = cnt
+      kk = k
+    }
+  }
+  fmt.printf("k: %d\n", kk)
+#+end_src
+
+#+RESULTS:
+: k: 837799
+
+* Prob 015 - Lattice Paths
+Starting in the top left corner of a 2x2 grid, and only being able to move to
+the right and down, there are exactly 6 routes to the bottom right corner.
+What about a grid 20x20?
+#+begin_src odin
+  //      1
+  //     1 1
+  //    1 2 1
+  //   1 3 3 1
+  //  1 4 6 4 1
+  // 1 5 a a 5 1
+  //1 6 f . f 6 1
+  make_pascals :: proc(pasc : [dynamic]int) -> (ret : [dynamic]int) {
+    // given a line of pascals triangle calc the next line down
+    ret = {1}
+    for i:=0; i<len(pasc); i+=1 {
+      if i==len(pasc)-1 {
+        append(&ret, 1)
+      } else {
+        append(&ret, pasc[i]+pasc[i+1])
+      }
+    }
+    return ret
+  }
+
+  calc_pascal :: proc(n : int) -> int {
+    // return number of paths possible, with only going right or down
+    // along a grid edge of N x N cells
+    tmp : [dynamic]int = {}
+    for i:=0; i<2*n+1; i+=1 {
+      tmp = make_pascals(tmp)
+      for i:=0; i<len(tmp); i+=1 {
+        //fmt.printf("%d ", tmp[i])
+      }
+      //fmt.println()
+    }
+    // now get center number (only every other row of pascal have a "center" number)
+    l := len(tmp)
+    if l%2 == 1 {
+      return tmp[l/2]
+    }
+    return -1
+  }
+
+  // NOTES - examples
+  // going only right or down
+
+  // 2x2: 00  , 01  , 01  , 11  , 11  , 11
+  //      00    00    01    00    01    11
+
+  // 3x3: 000   001   001   001   011   011   011   011   011   011   111   111   111   111   111   111   111   111   111   111
+  //      000   000   001   001   000   001   001   011   011   011   000   001   001   011   011   011   111   111   111   111
+  //      000   000   000   001   000   000   001   000   001   011   000   000   001   000   001   011   000   001   011   111
+
+  // 2, 6, 20
+
+  fmt.println(calc_pascal(20))
+  // this was super fun!
+#+end_src
+
+#+RESULTS:
+: 137846528820
+
+* Prob 016 - Power Digit Sum
+#+begin_src odin :includes core:strconv
+  // basic idea is:
+  // 		// x div by 10 is?  x * 0.1... OR (x * 0.8) / 8
+  divu10 :: proc(n : u64) -> (q : u64, r : u64) {
+    q = (n >> 1) + (n >> 2);  // q=n/2+n/4 = 3n/4
+    q = q + (q >> 4);         // q=3n/4+(3n/4)/16 = 3n/4+3n/64 = 51n/64
+    q = q + (q >> 8);         // q=51n/64+(51n/64)/256 = 51n/64 + 51n/16384 = 13107n/16384 q = q + (q >> 16); // q= 13107n/16384+(13107n/16384)/65536=13107n/16348+13107n/1073741824=858993458n/1073741824
+    // note: q is now roughly 0.8n
+    q = q >> 3;               // q=n/8 = (about 0.1n or n/10)
+    r = n - (((q << 2) + q) << 1); // rounding: r= n-2*(n/10*4+n/10)=n-2*5n/10=n-10n/10
+
+    return
+  } // above is fast, but not accurate
+
+  add_big_ten :: proc(a : ^[$N]u8, b : ^[$M]u8) {
+    carry			: u8 = 0
+    carry_tmp : u8 = 0
+
+    for i:=N-1; i>=0; i-=1 {
+      if (a[i] >= 10 - b[i] - carry) { // `a + b` overflows
+        carry_tmp = 1
+        a[i] += b[i] + carry - 10
+      } else {
+        carry_tmp = 0
+        a[i] += b[i] + carry
+      }
+      carry = carry_tmp
+    }
+  }
+
+  tmp : u64 = 1<<63; // start with a big number
+  sum := 0
+  str := fmt.tprintf("%d", tmp)
+  numa : [400]u8 = {}; // 400 should be enough digits
+  numb : [400]u8 = {}
+  for i:=0; i<400; i+=1 {
+    numa[i] = 0
+    numb[i] = 0
+  }
+  for j:=0; j<len(str); j+=1 {
+    numa[400-len(str) + j] = cast(u8)strconv._digit_value(cast(rune)str[j])
+    numb[400-len(str) + j] = numa[400-len(str) + j]
+  }
+
+  for x in 64..1000 {
+    add_big_ten(&numa, &numb); // double the number this many times
+    for k:=0; k<400; k+=1 {
+      numb[k] = numa[k]
+    }
+  }
+  //fmt.println(numa)
+  for l:=0; l<400; l+=1 {
+    sum += cast(int)numa[l]; // sum the digits
+  }
+  fmt.println(sum)
+#+end_src
+
+#+RESULTS:
+: 1366
+
+* Prob 017 - Number Letter Count
+#+begin_src odin
+  _num_as_w1 :: proc(n : int) -> (str : string) {
+    switch n {
+    case 1:
+      str = "one"
+    case 2:
+      str = "two"
+    case 3:
+      str = "three"
+    case 4:
+      str = "four"
+    case 5:
+      str = "five"
+    case 6:
+      str = "six"
+    case 7:
+      str = "seven"
+    case 8:
+      str = "eight"
+    case 9:
+      str = "nine"
+    }
+    return
+  }
+  _num_as_w :: proc(n : int) -> (str : string) {
+    switch n {
+    case 1:
+      str = "one"
+    case 2:
+      str = "two"
+    case 3:
+      str = "three"
+    case 4:
+      str = "four"
+    case 5:
+      str = "five"
+    case 6:
+      str = "six"
+    case 7:
+      str = "seven"
+    case 8:
+      str = "eight"
+    case 9:
+      str = "nine"
+    case 10:
+      str = "ten"
+    case 11:
+      str = "eleven"
+    case 12:
+      str = "twelve"
+    case 13:
+      str = "thirteen"
+    case 14:
+      str = "fourteen"
+    case 15:
+      str = "fifteen"
+    case 16:
+      str = "sixteen"
+    case 17:
+      str = "seventeen"
+    case 18:
+      str = "eighteen"
+    case 19:
+      str = "nineteen"
+    case 20..29:
+      str = "twenty"
+    case 30..39:
+      str = "thirty"
+    case 40..49:
+      str = "forty"
+    case 50..59:
+      str = "fifty"
+    case 60..69:
+      str = "sixty"
+    case 70..79:
+      str = "seventy"
+    case 80..89:
+      str = "eighty"
+    case 90..99:
+      str = "ninety"
+    }
+    if n > 20 {
+      if (n % 10 != 0) {
+        str = fmt.tprintf("%s%s", str, _num_as_w1(n%10))
+      }
+    }
+    return
+  }
+
+  number_as_words :: proc(n : int, str : ^string) -> int {
+    m : int = n
+    if m == 1000 {
+      str^ = "onethousand"
+    } else {
+      if m >= 100 {
+        str^ = fmt.tprintf("%shundred", _num_as_w(m/100))
+        m = m - (m/100 * 100)
+        if m > 0 {
+          str^ = fmt.tprintf("%sand", str^)
+        }
+        str^ = fmt.tprintf("%s%s", str^, _num_as_w(m))
+      } else {
+        str^ = fmt.tprintf("%s", _num_as_w(m))
+      }
+    }
+    return len(str^)
+  }
+
+  i := 1
+  s := ""
+  tmp := 0
+
+  for ; i<=1000; i+=1 {
+    tmp += number_as_words(i, &s)
+  }
+  fmt.println(tmp)
+#+end_src
+
+#+RESULTS:
+: 21124
+
+* Prob 018 - Maximum Path Sum I
+#+begin_src odin
+
+  triangle : []int = {
+    75,
+    95, 64,
+    17, 47, 82,
+    18, 35, 87, 10,
+    20, 04, 82, 47, 65,
+    19, 01, 23, 75, 03, 34,
+    88, 02, 77, 73, 07, 63, 67,
+    99, 65, 04, 28, 06, 16, 70, 92,
+    41, 41, 26, 56, 83, 40, 80, 70, 33,
+    41, 48, 72, 33, 47, 32, 37, 16, 94, 29,
+    53, 71, 44, 65, 25, 43, 91, 52, 97, 51, 14,
+    70, 11, 33, 28, 77, 73, 17, 78, 39, 68, 17, 57,
+    91, 71, 52, 38, 17, 14, 91, 43, 58, 50, 27, 29, 48,
+    63, 66, 04, 68, 89, 53, 67, 30, 73, 16, 69, 87, 40, 31,
+    04, 62, 98, 27, 23, 09, 70, 98, 73, 93, 38, 53, 60, 04, 23, }
+
+  connects_to :: proc(idx : int, triangle : []int) -> [2]int {
+    // every triangle node connects to the two below, find longest path down
+    ridx := 0
+    prev_ridx := 0
+    to_n1 := 0
+    to_n2 := 1
+    line := 1
+    for ; ridx <= idx; ridx+=1 {
+      if (ridx == prev_ridx+line) {
+        line += 1
+        prev_ridx = ridx
+      }
+
+      if ridx == idx {
+        to_n1 += line
+        to_n2 += line
+      } else {
+        to_n1 += 1
+        to_n2 += 1
+      }
+    }
+    if (to_n1 > len(triangle)-1 || to_n2 > len(triangle)-1) {
+      to_n1 = -1
+      to_n2 = -1
+    }
+
+    return {to_n1, to_n2}
+  }
+
+  Nodes :: struct {
+    n : int,
+    largest_sum  : int,
+    connect_prev : int,
+  }
+
+  tree := make([]Nodes, len(triangle))
+
+  for i:=0; i<len(triangle)-1; i+=1 {
+    tree[i] = ({ triangle[i], triangle[i], -1 })
+  }
+  for i:=0; i<len(triangle)-1; i+=1 {
+    tmp := connects_to(i, triangle)
+    if tmp[0] > 0 && tmp[1] > 0 {
+      if tree[tmp[0]].n + tree[i].largest_sum > tree[tmp[0]].largest_sum {
+        tree[tmp[0]].largest_sum = tree[tmp[0]].n + tree[i].largest_sum
+        tree[tmp[0]].connect_prev = i
+      }
+      if tree[tmp[1]].n + tree[i].largest_sum > tree[tmp[1]].largest_sum {
+        tree[tmp[1]].largest_sum = tree[tmp[1]].n + tree[i].largest_sum
+        tree[tmp[1]].connect_prev = i
+      }
+    }
+  }
+
+  // for all bottom nodes at the end -- note: 15 is height/width of triangle
+  largest := 0
+  for i:=0; i<15; i+=1 {
+    if tree[119-i].largest_sum > largest {
+      largest = tree[119-i].largest_sum
+    }
+  }
+  fmt.println(largest)
+#+end_src
+
+#+RESULTS:
+: 1074
+
+* Prob 019 - Counting Sundays
+#+begin_src odin
+  /*
+  1 Jan 1900 was a Monday.
+  Thirty days has September,
+  April, June and November.
+  All the rest have thirty-one,
+  Saving February alone,
+  Which has twenty-eight, rain or shine.
+  And on leap years, twenty-nine.
+  A leap year occurs on any year evenly divisible by 4, but not on a century unless it is divisible by 400.
+
+  How many Sundays fell on the first of the month during the twentieth century (1 Jan 1901 to 31 Dec 2000)?
+  ,*/
+
+  is_leap_year :: proc(y : int) -> bool {
+    if y % 400 == 0 {
+      return true
+    } else if y % 100 == 0 {
+      return false
+    } else if y % 4 == 0 {
+      return true
+    }
+    return false
+  }
+
+  num_of_days :: proc() -> int {
+    cnt := 0
+    tmp := 0
+    // # of days from Mon 1 Jan 1900 to 31 Dec 2000
+    day  := 1
+    mon  := 0
+    year := 1901
+
+    for ; true ; {
+      days_in_month := 31
+      if mon == 1 { // feb
+        days_in_month = 28
+        if is_leap_year(year) {
+          days_in_month = 29
+        }
+      } else if mon == 3 || mon == 5 || mon == 8 || mon == 10 {
+        days_in_month = 30
+      }
+
+      cnt += 1
+      day += 1
+
+      if cnt == 7 {
+        cnt = 0
+      }
+
+      if day > days_in_month {
+        day = 1
+        mon += 1
+      }
+      if mon >= 12 {
+        mon = 0
+        year += 1
+      }
+      if cnt == 6 && day == 1 {
+        //fmt.printf("day %d, mon %d, year %d\n", day, mon, year)
+        tmp += 1
+      }
+
+      if year == 2000 && mon == 11 && day == 31 {
+        return tmp
+      }
+    }
+    return 0
+  }
+
+  // for some STRANGE reason the last Sunday is not included? so subtract 1
+  fmt.printf("days: %d\n", num_of_days() - 1)
+
+#+end_src
+
+#+RESULTS:
+: days: 171
+
+* Prob 020 - Factorial Digit Sum
+sum all the digits in a string
+#+name: sum_string
+#+begin_src odin :var data="" :includes core:strconv
+sum := 0;
+for d in data {
+  sum += strconv._digit_value(d);
+}
+fmt.println(sum);
+#+end_src
+
+'calc' package in emacs has support for big integers with 'gmp', so use that
+to make string for 100 factorial
+#+begin_src emacs-lisp :post sum_string(data=*this*) :cache yes
+(calc-eval "100!")
+#+end_src
+
+#+RESULTS[1554e3690e5d36455c0a23e2eb6b63c1a76dc90f]:
+: 648
+
+* Prob 021 - Amicable Numbers
+
+Let d(n) be defined as the sum of proper divisors of n (numbers less than n
+which divide evenly into n).
+If d(a) = b and d(b) = a, where a ? b, then a and b are an amicable pair and
+each of a and b are called amicable numbers.
+
+For example, the proper divisors of 220 are 1, 2, 4, 5, 10, 11, 20, 22, 44, 55
+and 110; therefore d(220) = 284. The proper divisors of 284 are 1, 2, 4, 71
+and 142; so d(284) = 220.
+
+Evaluate the sum of all the amicable numbers under 10000.
+
+#+begin_src odin
+sum := 0
+sum_of_proper_divisors :: proc(n : int) -> (sum : int) {
+  sum = 1
+  last_ni := 0
+  for i:=2; i<(n/2); i+=1 {
+    if n % i == 0 {
+      if last_ni == i {
+	break
+      }
+      last_ni = (n/i)
+      sum += i + last_ni
+    }
+  }
+  return
+}
+
+for i:=6; i<10_000; i+=1 {
+  a := sum_of_proper_divisors(i)
+  b := sum_of_proper_divisors(a)
+  if b == i && a != b{
+    fmt.println(i, a, b)
+    sum += i
+  }
+}
+fmt.println(sum)
+#+end_src
+
+#+RESULTS:
+|   220 |  284 |  220 |
+|   284 |  220 |  284 |
+|  1184 | 1210 | 1184 |
+|  1210 | 1184 | 1210 |
+|  2620 | 2924 | 2620 |
+|  2924 | 2620 | 2924 |
+|  5020 | 5564 | 5020 |
+|  5564 | 5020 | 5564 |
+|  6232 | 6368 | 6232 |
+|  6368 | 6232 | 6368 |
+| 31626 |      |      |
+
+* Prob 022 - Names Scores
+#+begin_src odin :var data=names.org:names-data-sorted
+idx := 1
+sum := 0
+
+name_worth :: proc(s : string) -> int {
+  worth := 0
+  for i in s {
+    worth += cast(int)i - cast(int)'A' + 1
+  }
+  return worth
+}
+
+//fmt.println(name_worth("COLIN"))
+for i in data {
+  sum += name_worth(i[0]) * idx
+  idx += 1
+}
+fmt.println(sum)
+#+end_src
+
+* Prob 023 - Non-abundant Sums
+A perfect number is a number for which the sum of its proper divisors is
+exactly equal to the number. For example, the sum of the proper divisors of 28
+would be 1 + 2 + 4 + 7 + 14 = 28, which means that 28 is a perfect number.
+
+A number n is called deficient if the sum of its proper divisors is less than
+n and it is called abundant if this sum exceeds n.
+
+As 12 is the smallest abundant number, 1 + 2 + 3 + 4 + 6 = 16, the smallest
+number that can be written as the sum of two abundant numbers is 24. By
+mathematical analysis, it can be shown that all integers greater than 28123 can
+be written as the sum of two abundant numbers. However, this upper limit cannot
+be reduced any further by analysis even though it is known that the greatest
+number that cannot be expressed as the sum of two abundant numbers is less than
+this limit.
+
+Find the sum of all the positive integers which cannot be written as the sum of
+two abundant numbers.
+
+#+name: asValue
+#+begin_src emacs-lisp :var name="last" :var val=0 :results value
+  (concat (format "#+NAME: %s\n" name) val)
+#+end_src
+
+#+begin_src odin :var primes=primes :includes core:encoding/csv core:os core:io core:strconv core:strings core:math
+file,ferr := os.open(primes)
+if ferr != 0 {
+  fmt.println("error")
+  return
+}
+defer os.close(file)
+
+readr,_ := io.to_reader(os.stream_from_handle(file))
+csvreadr : csv.Reader
+csv.reader_init(&csvreadr, readr)
+strs, err := csv.read(&csvreadr)
+
+primelist := make(map[int]int)
+defer delete(primelist)
+
+for i:=0; i<len(strs); i+=1 {
+  ok : bool
+  primelist[i],ok = strconv.parse_int(strings.trim(strs[i], " "))
+  if !ok {
+    fmt.printf("error")
+  }
+}
+
+sum_of_factors_prime :: proc(n : int, primelist : map[int]int) -> int {
+  nn := n
+  sum := 1
+  p := primelist[0]
+  j, i : int = 0, 0
+
+  for ; p*p <= nn && nn > 1 && i < len(primelist); {
+    p = primelist[i]
+    i+=1
+    if (nn % p == 0) {
+      j = p * p
+      nn = nn / p
+      for ; nn % p == 0; {
+        j = j * p
+        nn = nn / p
+      }
+      sum = sum * (j-1) / (p-1)
+    }
+  }
+  if (nn > 1) {
+    sum = sum * (nn + 1)
+  }
+
+  return sum - n
+}
+
+sum_of_factors :: proc(n : int) -> int {
+  sqrt_of_number := cast(int)math.sqrt(cast(f32)n)
+  sum := 1
+
+  // If the number is a perfect square
+  // Count the squareroot once in the sum of factors
+  if (n == sqrt_of_number * sqrt_of_number) {
+    sum += sqrt_of_number
+    sqrt_of_number-=1
+  }
+
+  for i := 2; i <= sqrt_of_number; i+=1 {
+    if (n % i == 0) {
+      sum = sum + i + (n / i)
+    }
+  }
+  return sum
+}
+
+// now file all abundant numbers
+limit := 28123
+abundant := make(map[int]int)
+defer delete(abundant)
+
+j:=0
+for i in 12..<limit {
+  if sum_of_factors_prime(i, primelist) > i {
+    //if sum_of_factors(i) > i {
+    abundant[j] = i
+    j+=1
+  }
+}
+
+can_be_written_as_abundant : [28124]bool
+for i in 0..<j {
+  for k in i..<j {
+    tmp := abundant[i] + abundant[k]
+    if (tmp <= limit) {
+      can_be_written_as_abundant[tmp] = true
+    } else {
+      break
+    }
+  }
+}
+sum := 0
+for i in 1..limit {
+  if can_be_written_as_abundant[i] == false {
+    sum+=i
+  }
+}
+
+fmt.println(sum)
+#+end_src
+
+#+RESULTS:
+: 4179871
+
+* Prob 024 - Lexicographic Permutations
+#+begin_src odin
+// 9! is the number of combinations that 9 digits can be arranged
+// 8! is the number of combinations that 8 digits can be arranged
+
+factorial :: proc(n : int) -> int {
+  if n < 0 {
+    return 0
+  }
+  p : int = 1
+  for i:=1; i < n; i+=1 {
+    p *= i
+  }
+  return p
+}
+
+perm  : []int = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }
+n := len(perm)+1
+pn := len(perm)
+perm_num := ""
+remain := 1_000_000 - 1
+
+for i:=1; i < n; i+=1 {
+  fac := factorial(n-i)
+  j := remain / fac
+  remain = remain % fac
+
+  perm_num = fmt.tprintf("%s%d", perm_num, perm[j])
+  copy(perm[j:], perm[(j+1):])
+  pn -= 1
+
+  if (remain == 0) {
+    break
+  }
+}
+
+for i:=0; i < pn; i+=1 {
+  perm_num = fmt.tprintf("%s%d", perm_num, perm[i])
+}
+fmt.println(perm_num)
+#+end_src
+
+#+RESULTS:
+: 2783915460
+
+* Prob 025 - 1000-digit Fibonacci Number
+#+begin_src odin
+
+// add two big (base 10) numbers, put result in a
+add_big_ten :: proc(a : ^[$N]u8, b : ^[$M]u8) {
+  carry			: u8 = 0
+  carry_tmp : u8 = 0
+
+  for i:=N-1; i>=0; i-=1 {
+    if (a[i] >= 10 - b[i] - carry) { // `a + b` overflows
+      carry_tmp = 1
+      a[i] += b[i] + carry - 10
+    } else {
+      carry_tmp = 0
+      a[i] += b[i] + carry
+    }
+    carry = carry_tmp
+  }
+}
+numa : [1000]u8 = {}
+numb : [1000]u8 = {}
+for i:=0; i<1000; i+=1 {
+  numa[i] = 0
+  numb[i] = 0
+}
+numa[1000-1] = 1
+numb[1000-1] = 1
+n := 2
+
+for ; numa[0] == 0 && numb[0] == 0; {
+  add_big_ten(&numa, &numb)
+  n+=1
+  if !(numa[0] > 0) {
+    add_big_ten(&numb, &numa)
+    n+=1
+  }
+}
+
+first_none_zero := false
+for l:=0; l<1000; l+=1 {
+  if numa[l] != 0 {
+    first_none_zero = true
+  }
+  if first_none_zero {
+    //fmt.printf("%d", numa[l]); // if you want to print the number
+  }
+}
+fmt.printf("%d", n)
+#+end_src
+
+#+RESULTS:
+: 4782
+
+* Prob 026 - Reciprocal Cycles
+#+begin_src odin :var primes=primes :includes core:os core:io core:encoding/csv core:strconv core:strings
+file,ferr := os.open(primes)
+if ferr != 0 {
+  fmt.println("error")
+  return
+}
+defer os.close(file)
+
+readr,_ := io.to_reader(os.stream_from_handle(file))
+csvreadr : csv.Reader
+csv.reader_init(&csvreadr, readr)
+strs, err := csv.read(&csvreadr)
+
+primelist := make(map[int]int)
+defer delete(primelist)
+
+d: f32 =0
+i:=0
+for ; i<len(strs); i+=1 {
+  ok : bool
+  primelist[i],ok = strconv.parse_int(strings.trim(strs[i], " "))
+  if !ok {
+    fmt.printf("error")
+  }
+  if primelist[i] > 1000 {
+    d = cast(f32)primelist[i-3]
+    break
+  }
+}
+// now we are looking for "full period primes"(they have period/length of p-1) starting at i-1
+
+// note: 31 is prime, but has period/order of 15   (since 1000000000000000 % 31 == 1)
+// below is an example showing this
+find_period :: proc(p : int) -> int {
+  order:=0
+  mod:=0
+  num:=10
+
+  for ; mod != 1; {
+    mod = num % p
+    num = mod * 10
+    order+=1
+  }
+  return order
+}
+//fmt.println(find_period(31))
+
+// for a list see...
+//(PARI) a(n)=if(n<4, n==2, znorder(Mod(10, prime(n))))           a(n) is decimal expansion length
+// https://oeis.org/A002371/b002371.txt  <-- contains a list of primes and their decimal expansion length
+
+j:=1
+how_far_back := 20; // not sure how far back you might have to go, but this seems like enough
+for ; j<how_far_back; j+=1 {
+  if find_period(primelist[i-j]) == (primelist[i-j]-1) {
+    break
+  }
+}
+fmt.println(primelist[i-j])
+#+end_src
+
+#+RESULTS:
+: 983
+
+* Prob 027 - Quadratic Primes
+#+begin_src odin
+// a and b go from -1000 to 1000... what quadratic n^2 + an + b produces the most primes for n=0..X (maximize X)
+is_prime :: proc (n : int) -> bool {
+  if n <= 5 {
+    return n==2 || n==3 || n==5
+  }
+  p := 5
+  for prime_idx:=3; p<=n; {
+    // prime check
+    is_prime := true
+    if (p % 2 == 0) || (p % 3 == 0) {
+      is_prime = false
+    } else {
+      for i:=5; i * i <= p; {
+        if (p % i == 0) || (p % (i+2) == 0) {
+          is_prime = false
+        }
+        i += 6
+      }
+    }
+
+    // now is_prime tells if p is prime
+    if is_prime {
+      if p==n {
+        return true
+      }
+      prime_idx += 1
+      p += 2; // check next possible prime
+    } else {
+      p += 2
+    }
+  }
+  return false
+}
+
+primes_produced :: proc(a : int, b : int) -> int {
+  n:=0
+  p := b
+  for ; is_prime(p); {
+    n+=1
+    p = (n*n) + a*n + b
+  }
+  return n
+}
+
+a := -1000
+b := -1000
+max_primes := 0
+num := 0
+for ; a <= 1000; a+=1 {
+  for b=-1000; b <= 1000; b+=1 {
+    tmp := primes_produced(a, b)
+    if tmp > max_primes {
+      max_primes = tmp
+      num = a * b
+      fmt.println(max_primes, a, b)
+    }
+  }
+}
+fmt.println(max_primes, num)
+#+end_src
+
+#+RESULTS:
+|  1 |  -1000 |   2 |
+|  2 |   -996 | 997 |
+|  3 |   -499 | 997 |
+|  4 |   -325 | 977 |
+|  5 |   -245 | 977 |
+|  6 |   -197 | 983 |
+|  7 |   -163 | 983 |
+|  8 |   -131 | 941 |
+|  9 |   -121 | 947 |
+| 11 |   -105 | 967 |
+| 71 |    -61 | 971 |
+| 71 | -59231 |     |
+
+* Prob 028 - Number Spiral Diagonals
+#+begin_src odin
+M :: 1001
+x := M/2
+y := M/2
+n := 1
+going_dir := 0
+spiral_cnt := 0
+sum := 0
+
+// sum up corners or fill spiral box
+for ; going_dir < 4; {
+  //box[x][y] = n
+  if x == y || (M-1-x) == y {
+    sum += n
+  }
+  n+=1
+
+  if going_dir == 0 { // right
+    x+=1
+    if x > M-1 {
+      going_dir = 4; // end
+    }
+  } else if going_dir == 1 { // down
+    y+=1
+  } else if going_dir == 2 { // left
+    x-=1
+  } else if going_dir == 3 { // up
+    y-=1
+  }
+
+  if going_dir == 0 && x>M/2+spiral_cnt {
+    going_dir = 1
+    spiral_cnt+=1
+  }
+  else if going_dir == 1 && y==M/2+spiral_cnt {
+    going_dir = 2
+  }
+  else if going_dir == 2 && x==M/2-spiral_cnt {
+    going_dir = 3
+  }
+  else if going_dir == 3 && y==M/2-spiral_cnt {
+    going_dir = 0
+  }
+}
+fmt.println(sum)
+#+end_src
+
+#+RESULTS:
+: 669171001
+
+* Prob 029 - Distinct Powers
+#+begin_src odin :includes core:math
+set : map[f64]bool
+for a:=2; a <= 100; a+=1 {
+  for b:=2; b <= 100; b+=1 {
+    set[math.pow_f64(cast(f64)a, cast(f64)b)] = true
+  }
+}
+fmt.println("set size:", len(set))
+#+end_src
+
+#+RESULTS:
+: set size: 9183
+
+* Prob 030 - Digit Fifth Powers
+Surprisingly there are only three numbers that can be written as the sum of fourth powers of their digits:
+
+1634 = 14 + 64 + 34 + 44
+8208 = 84 + 24 + 04 + 84
+9474 = 94 + 44 + 74 + 44
+As 1 = 14 is not a sum it is not included.
+
+The sum of these numbers is 1634 + 8208 + 9474 = 19316.
+
+Find the sum of all the numbers that can be written as the sum of fifth powers of their digits.
+
+#+begin_src odin :includes core:math core:strconv
+total_sum := 0
+digits_cnt := 6
+power : f64 = 5
+for i in 2..<1000000 {
+  frmt := fmt.tprintf("%%0%dd", digits_cnt)
+  str := fmt.tprintf(frmt, i)
+
+  sum := 0
+  for j in 0..<digits_cnt {
+    d := strconv._digit_value(cast(rune)str[j])
+    pow := math.pow_f64(cast(f64)d, power)
+    sum += cast(int)pow
+  }
+  if sum == i {
+    fmt.println(str, sum)
+    total_sum += sum
+  }
+}
+fmt.println(total_sum)
+#+end_src
+
+#+RESULTS:
+| 004150 |   4150 |
+| 004151 |   4151 |
+| 054748 |  54748 |
+| 092727 |  92727 |
+| 093084 |  93084 |
+| 194979 | 194979 |
+| 443839 |        |
+* Prob 031 - Coin Sum
+In the United Kingdom the currency is made up of pound (£) and pence (p). There are eight coins in general circulation:
+
+1p, 2p, 5p, 10p, 20p, 50p, £1 (100p), and £2 (200p).
+It is possible to make £2 in the following way:
+
+1×£1 + 1×50p + 2×20p + 1×5p + 1×2p + 3×1p
+How many different ways can £2 be made using any number of coins?
+
+#+begin_src odin :includes core:strings core:strconv
+coins : []int = { 1, 2, 5, 10, 20, 50, 100, 200 }
+goal := 200
+ways : []int = make([]int, goal+1)
+ways[0] = 1
+
+for i in 0..<len(coins) {
+  for j in coins[i]..<goal+1 {
+    ways[j] += ways[j - coins[i]]
+  }
+}
+
+fmt.println(ways[goal])
+#+end_src
+
+#+RESULTS:
+: 73682
+* Prob 032 - Pandigital
+We shall say that an n-digit number is pandigital if it makes use of all the
+digits 1 to n exactly once; for example, the 5-digit number, 15234, is 1 through
+5 pandigital.
+The product 7254 is unusual, as the identity, 39 × 186 = 7254, containing
+multiplicand, multiplier, and product is 1 through 9 pandigital.
+
+Find the sum of all products whose multiplicand/multiplier/product identity can
+be written as a 1 through 9 pandigital.
+
+HINT: Some products can be obtained in more than one way so be sure to only
+include it once in your sum.
+#+begin_src odin :includes core:strings
+// uses bit shifting
+is_pandigital :: proc(n: u64) -> bool {
+  digits, cnt, tmp : i32 = 0, 0, 0
+  nn := n
+  for ; nn > 0; {
+    tmp = digits
+    digits = digits | 1 << cast(u32)((nn % 10) -1)
+    if tmp == digits do return false
+    cnt += 1
+    nn /= 10
+  }
+  return digits == (1 << cast(u32)cnt) -1
+}
+concat :: proc(a, b: u64) -> u64 {
+  cc : u64 = b
+  aa := a
+  for ; cc > 0; {
+    aa *= 10
+    cc /= 10
+  }
+  return aa + b
+}
+
+//fmt.println(is_pandigital(987654321))
+
+products : map[u64]bool
+sum : u64 = 0
+prod, compiled : u64
+
+for m: u64 =2; m < 100; m+=1 {
+  nbeg : u64 = (m > 9) ? 123 : 1234
+  nend : u64 = 10_000 / m + 1
+
+  for n: u64 =nbeg; n < nend; n+=1 {
+    prod = m * n
+    compiled = concat( concat( prod, n ), m )
+    if compiled >= 1e8 && compiled < 1e9 && is_pandigital(compiled) {
+      products[prod] = true
+    }
+  }
+}
+for pk, pv in products {
+  sum += pk
+}
+fmt.println(sum)
+#+end_src
+
+#+RESULTS:
+: 45228
+* Prob 033 - Digit cancelling fractions
+The fraction 49/98 is a curious fraction, as an inexperienced mathematician in attempting to simplify it may incorrectly believe that 49/98 = 4/8, which is correct, is obtained by cancelling the 9s.
+We shall consider fractions like, 30/50 = 3/5, to be trivial examples.
+There are exactly four non-trivial examples of this type of fraction, less than one in value, and containing two digits in the numerator and denominator.
+If the product of these four fractions is given in its lowest common terms, find
+the value of the denominator.
+
+#+begin_src odin :includes core:strconv core:math
+fraction :: struct {
+  n : f64,
+  d : f64,
+}
+the_four := make([]fraction, 4)
+defer delete(the_four)
+
+idx := 0
+for numer in 1..99 {
+  for denom in numer..99 {
+    goal : f64 = cast(f64)numer / cast(f64)denom
+    s_num := fmt.tprintf("%02d", numer)
+    s_den := fmt.tprintf("%02d", denom)
+    a, b, c, d := s_num[0], s_num[1], s_den[0], s_den[1]
+    A : f64 = cast(f64)strconv._digit_value(cast(rune)a)
+    B : f64 = cast(f64)strconv._digit_value(cast(rune)b)
+    C : f64 = cast(f64)strconv._digit_value(cast(rune)c)
+    D : f64 = cast(f64)strconv._digit_value(cast(rune)d)
+    cnt := 0
+
+    if A == 0 || B == 0 do cnt += 1
+    if C == 0 || D == 0 do cnt += 1
+
+    found := false
+    if cnt < 2 && numer != denom {
+      if C != 0 {
+        if B==D && A / C == goal do found = true
+        if A==D && B / C == goal do found = true
+      }
+      if D != 0 {
+        if B==C && A / D == goal do found = true
+        if A==C && B / D == goal do found = true
+      }
+    }
+    if found {
+      //fmt.printf("%c%c %c%c\n", a, b, c, d)
+      the_four[idx] = fraction{ cast(f64)numer, cast(f64)denom }
+      idx += 1
+    }
+  }
+}
+n := 1
+d := 1
+for f in the_four {
+  //fmt.println(f.n, f.d)
+  n *= cast(int)f.n
+  d *= cast(int)f.d
+}
+// denom in its lowest common term
+fmt.println( d / math.gcd(n, d) )
+
+#+end_src
+
+#+RESULTS:
+: 100
+* Prob 034 - Digit factorials
+145 is a curious number, as 1! + 4! + 5! = 1 + 24 + 120 = 145.
+Find the sum of all numbers which are equal to the sum of the factorial of their digits.
+Note: As 1! = 1 and 2! = 2 are not sums they are not included.
+
+#+begin_src odin :includes core:strconv core:math/bits core:math
+cnt := bits.U16_MAX
+acc := 0
+for n in 10..cnt {
+  // get all digits
+  // get factorials of those digits
+  // add them together
+  nn := n
+  accum := 0
+  for nn > 0 {
+    num := fmt.tprintf("%d", nn)
+    a := num[len(num)-1]
+    A := strconv._digit_value(cast(rune)a)
+    accum += math.factorial(A)
+    nn = nn / 10
+  }
+  if accum == n {
+    fmt.println(n)
+    acc += n
+  }
+}
+fmt.println(acc)
+#+end_src
+
+#+RESULTS:
+|   145 |
+| 40585 |
+| 40730 |
+* Prob 035 - Circular primes
+The number, 197, is called a circular prime because all rotations of the digits: 197, 971, and 719, are themselves prime.
+There are thirteen such primes below 100: 2, 3, 5, 7, 11, 13, 17, 31, 37, 71, 73, 79, and 97.
+How many circular primes are there below one million?
+
+#+begin_src odin :includes core:math core:strconv
+is_prime :: proc(x : int) -> bool
+{
+  if x % 2 == 0 {
+    return false
+  }
+  for i:=3; i <= cast(int)math.sqrt_f32(cast(f32)x); i+=2 {
+    if x % i == 0 {
+      return false
+    }
+  }
+  return true
+}
+rotate :: proc(x : int) -> int
+{
+  nn := x
+  num := fmt.tprintf("%d", nn)
+  n := fmt.tprintf("%s%c", num[1:], num[0])
+  ret, ok := strconv.parse_int(n)
+  return ret
+}
+
+cprimes : [dynamic]int
+append(&cprimes, 2)
+for i in 3..<1_000_000 {
+  found := true
+  n := i
+  sn := fmt.tprintf("%d", n)
+  for i in 0..<len(sn) {
+    if sn[i] == '0' {
+      found = false
+      break
+    }
+  }
+  if found {
+    for i in 0..<len(sn) {
+      if !is_prime(n) {
+        found = false
+        break
+      }
+      n = rotate(n)
+    }
+  }
+  if found {
+    append(&cprimes, i)
+  }
+}
+//for i in cprimes {
+//  fmt.println(i)
+//}
+fmt.println(len(cprimes))
+#+end_src
+
+#+RESULTS:
+: 55
+* Prob 036 - Double-base palindromes
+The decimal number, 585 = 1001001001_2 (binary), is palindromic in both bases.
+Find the sum of all numbers, less than one million, which are palindromic in base 10 and base 2.
+(Please note that the palindromic number, in either base, may not include
+leading zeros.)
+
+#+begin_src odin :includes core:strconv core:strings
+hex_to_binary : map[rune]string
+hex_to_binary['0'] = "0000"
+hex_to_binary['1'] = "0001"
+hex_to_binary['2'] = "0010"
+hex_to_binary['3'] = "0011"
+hex_to_binary['4'] = "0100"
+hex_to_binary['5'] = "0101"
+hex_to_binary['6'] = "0110"
+hex_to_binary['7'] = "0111"
+hex_to_binary['8'] = "1000"
+hex_to_binary['9'] = "1001"
+hex_to_binary['a'] = "1010"
+hex_to_binary['b'] = "1011"
+hex_to_binary['c'] = "1100"
+hex_to_binary['d'] = "1101"
+hex_to_binary['e'] = "1110"
+hex_to_binary['f'] = "1111"
+
+num := 0
+
+for i in 1..<1_000_000 {
+  si := fmt.tprintf("%d", i)
+  si_hex := fmt.tprintf("%x", i)
+  si_binary := ""
+  start := 0
+  end := len(si) - 1
+  good := true
+  for ;  start< len(si)/2 && start != end; {
+    if si[start] != si[end] do good = false
+    start += 1
+    end -= 1
+  }
+  if good {
+    for s in si_hex {
+      si_binary = strings.concatenate({si_binary, hex_to_binary[s]})
+    }
+    si_binary = strings.trim_left(si_binary, "0")
+
+    start = 0
+    end = len(si_binary) - 1
+    for ; start < len(si_binary)/2 && start != end; {
+      if si_binary[start] != si_binary[end] do good = false
+      start += 1
+      end -= 1
+    }
+  }
+
+  if good {
+    num += i
+    //fmt.println(i, si_binary)
+  }
+}
+fmt.println(num)
+#+end_src
+
+#+RESULTS:
+: 872187
+
+* Prob 037 - Truncatable primes
+The number 3797 has an interesting property. Being prime itself, it is possible
+to continuously remove digits from left to right, and remain prime at each
+stage: 3797, 797, 97, and 7. Similarly we can work from right to left: 3797,
+379, 37, and 3. Find the sum of the only eleven primes that are both truncatable
+from left to right and right to left. NOTE: 2, 3, 5, and 7 are not considered to
+be truncatable primes.
+
+#+begin_src odin :includes core:strconv core:math
+is_prime :: proc(x : int) -> bool {
+  if x == 1 do return false
+  if x == 2 do return true
+  if x % 2 == 0 {
+    return false
+  }
+  for i:=3; i <= cast(int)math.sqrt_f32(cast(f32)x); i+=2 {
+    if x % i == 0 {
+      return false
+    }
+  }
+  return true
+}
+is_lr_prime :: proc(num : int) -> bool {
+  // 3797... 379(7)... 37(9)... 3(7)
+  str := fmt.tprintf("%d", num)
+  new_num, ok := strconv.parse_int(str[0:len(str)-1])
+  if ok {
+    if len(str)==2 do return is_prime(new_num)
+    if is_prime(new_num) && is_lr_prime(new_num) do return true
+  }
+  return false
+}
+is_rl_prime :: proc(num : int) -> bool {
+  // 3797... (3)797... (7)97... (9)7
+  str := fmt.tprintf("%d", num)
+  new_num, ok := strconv.parse_int(str[1:len(str)])
+  if ok {
+    if len(str)==2 do return is_prime(new_num)
+    if is_prime(new_num) && is_rl_prime(new_num) do return true
+  }
+  return false
+}
+
+num := 11
+acc := 0
+for i:=0; i<11; { // only 11 =)
+  if is_prime(num) && is_lr_prime(num) && is_rl_prime(num) {
+    i += 1 // both L->R prime and R->L prime
+    fmt.println("adding", num)
+    acc += num
+  }
+  num += 2 // no need for even numbers
+}
+fmt.println(acc)
+#+end_src
+
+#+RESULTS:
+| adding |     23 |
+| adding |     37 |
+| adding |     53 |
+| adding |     73 |
+| adding |    313 |
+| adding |    317 |
+| adding |    373 |
+| adding |    797 |
+| adding |   3137 |
+| adding |   3797 |
+| adding | 739397 |
+| 748317 |        |
+
+* Prob 038 - Pandigital multiples
+Take the number 192 and multiply it by each of 1, 2, and 3:
+
+192 × 1 = 192 192 × 2 = 384 192 × 3 = 576 By concatenating each product we get
+the 1 to 9 pandigital, 192384576. We will call 192384576 the concatenated
+product of 192 and (1,2,3)
+
+The same can be achieved by starting with 9 and multiplying by 1, 2, 3, 4, and
+5, giving the pandigital, 918273645, which is the concatenated product of 9 and
+(1,2,3,4,5).
+
+What is the largest 1 to 9 pandigital 9-digit number that can be formed as the
+concatenated product of an integer with (1,2, ... , n) where n > 1?
+#+begin_src odin :includes core:strconv core:fmt core:strings
+
+AllNine :: distinct bit_set[1..9]
+
+is_pandigital :: proc(num: int) -> bool {
+  nine : AllNine
+  nine += { 1, 2, 3, 4, 5, 6, 7, 8, 9 }
+
+  str := fmt.tprintf("%d", num)
+  if len(str) != 9 do return false // limit to 9 digit numbers
+
+  for c in str {
+    nine -= { strconv._digit_value(c) }
+  }
+  if nine == {} do return true // if empty
+  return false
+}
+
+concat_prod :: proc(num: int, s: [dynamic]int) -> (int, bool) {
+  str := string("")
+  for i in s {
+    tmp := fmt.tprintf("%d", (num * i))
+    str = strings.concatenate( []string{str, tmp} )
+  }
+  return strconv.parse_int(str, 10)
+}
+
+main :: proc() {
+  largest := 0
+  pan_set : [dynamic]int
+  append(&pan_set, 1)
+  to_add := []int{2, 3,4,5,6,7,8,9}
+
+  for j in to_add {
+    //fmt.println(j)
+    append(&pan_set, j)
+
+    for i in 1..<500_000 {
+      num, ok := concat_prod(i, pan_set)
+      if ok && is_pandigital(num) && num > largest {
+        largest = num
+      }
+    }
+  }
+  fmt.println(largest) // must be slowest way possible... hehe
+}
+#+end_src
+
+#+RESULTS:
+: 932718654
+
+* Prob 039 - Integer Right Triangles
+If p is the perimeter of a right angle triangle with integral length sides,
+{a,b,c}, there are exactly three solutions for p = 120.
+{20,48,52}, {24,45,51}, {30,40,50}
+For which value of p ≤ 1000, is the number of solutions maximised?
+#+begin_src odin :includes core:strconv core:math
+is_right_tri :: proc(a, b, c: int) -> bool {
+  A := math.pow_f32(f32(a), 2)
+  B := math.pow_f32(f32(b), 2)
+  C := math.pow_f32(f32(c), 2)
+  if A + B == C do return true
+  return false
+}
+
+num_solutions :: proc(p: int) -> int {
+  num := 0
+  for a in 0..<(p/2) {
+    for b in 0..<a {
+      c := p - a - b
+      if c > 1 {
+        if is_right_tri(a, b, c) do num += 1
+      }
+    }
+  }
+  return num
+}
+
+max := 0
+ans := 0
+for p in 1..<1000 {
+  tmp := num_solutions(p)
+  if tmp > max {
+    max = tmp
+    ans = p
+  }
+}
+fmt.println(ans)
+#+end_src
+
+#+RESULTS:
+: 840
+
+* Prob 040 - Champernowne's constant
+An irrational decimal fraction is created by concatenating the positive integers:
+0.123456789101112131415161718192021...
+
+It can be seen that the 12th digit of the fractional part is 1.
+If dn represents the nth digit of the fractional part, find the value of the following expression.
+
+d1 × d10 × d100 × d1000 × d10000 × d100000 × d1000000
+#+begin_src odin :includes core:strconv core:strings
+d :: proc(n : int) -> int {
+  WITH_STR :: false
+  str := ""
+  digits_cnt := 0
+  for i:=0; i<n; i+=1 {
+    tmp := fmt.tprintf("%d", i+1)
+    if WITH_STR {
+      str = strings.concatenate([]string{str, tmp})
+    }
+    digits_cnt += len(tmp)
+    if digits_cnt >= n {
+      return strconv._digit_value(rune(tmp[len(tmp)-(digits_cnt-n)-1]))
+    }
+  }
+  return -1
+}
+
+fmt.println(d(1) * d(10) * d(100) * d(1_000) * d(10_000) * d(100_000) * d(1_000_000))
+#+end_src
+
+#+RESULTS:
+: 210
+
+* Prob 041 - Pandigital prime
+We shall say that an n-digit number is pandigital if it makes use of all the
+digits 1 to n exactly once. For example, 2143 is a 4-digit pandigital and is
+also prime.
+
+What is the largest n-digit pandigital prime that exists?
+#+begin_src odin :includes core:strconv util :tangle pandigital.odin
+ret : [dynamic]string; defer delete(ret)
+N :: 7
+str := ""
+for i in 1..=N {
+  str = fmt.tprintf("%s%d", str, i)
+}
+
+largest := 0
+util.permute(str, 0, N-1, &ret)
+for i in ret {
+  num,_ := strconv.parse_int(i)
+  if num > largest && util.is_prime(num) do largest = num
+}
+fmt.println(largest)
+#+end_src
+
+#+RESULTS:
+: 7652413
+
+* Prob 042 - Coded triangle numbers
+The nth term of the sequence of triangle numbers is given by, tn = ½n(n+1); so
+the first ten triangle numbers are:
+1, 3, 6, 10, 15, 21, 28, 36, 45, 55, ...
+
+By converting each letter in a word to a number corresponding to its
+alphabetical position and adding these values we form a word value. For example,
+the word value for SKY is 19 + 11 + 25 = 55 = t10. If the word value is a
+triangle number then we shall call the word a triangle word.
+
+ABCDEFGHIJ KL
+1234567890 12
+
+Using words.txt (right click and 'Save Link/Target As...'), a 16K text file
+containing nearly two-thousand common English words, how many are triangle
+words?
+
+** words.txt
+tangle this file first so src program has something to read
+#+begin_src text :tangle words.txt
+"A","ABILITY","ABLE","ABOUT","ABOVE","ABSENCE","ABSOLUTELY","ACADEMIC","ACCEPT","ACCESS","ACCIDENT","ACCOMPANY","ACCORDING","ACCOUNT","ACHIEVE","ACHIEVEMENT","ACID","ACQUIRE","ACROSS","ACT","ACTION","ACTIVE","ACTIVITY","ACTUAL","ACTUALLY","ADD","ADDITION","ADDITIONAL","ADDRESS","ADMINISTRATION","ADMIT","ADOPT","ADULT","ADVANCE","ADVANTAGE","ADVICE","ADVISE","AFFAIR","AFFECT","AFFORD","AFRAID","AFTER","AFTERNOON","AFTERWARDS","AGAIN","AGAINST","AGE","AGENCY","AGENT","AGO","AGREE","AGREEMENT","AHEAD","AID","AIM","AIR","AIRCRAFT","ALL","ALLOW","ALMOST","ALONE","ALONG","ALREADY","ALRIGHT","ALSO","ALTERNATIVE","ALTHOUGH","ALWAYS","AMONG","AMONGST","AMOUNT","AN","ANALYSIS","ANCIENT","AND","ANIMAL","ANNOUNCE","ANNUAL","ANOTHER","ANSWER","ANY","ANYBODY","ANYONE","ANYTHING","ANYWAY","APART","APPARENT","APPARENTLY","APPEAL","APPEAR","APPEARANCE","APPLICATION","APPLY","APPOINT","APPOINTMENT","APPROACH","APPROPRIATE","APPROVE","AREA","ARGUE","ARGUMENT","ARISE","ARM","ARMY","AROUND","ARRANGE","ARRANGEMENT","ARRIVE","ART","ARTICLE","ARTIST","AS","ASK","ASPECT","ASSEMBLY","ASSESS","ASSESSMENT","ASSET","ASSOCIATE","ASSOCIATION","ASSUME","ASSUMPTION","AT","ATMOSPHERE","ATTACH","ATTACK","ATTEMPT","ATTEND","ATTENTION","ATTITUDE","ATTRACT","ATTRACTIVE","AUDIENCE","AUTHOR","AUTHORITY","AVAILABLE","AVERAGE","AVOID","AWARD","AWARE","AWAY","AYE","BABY","BACK","BACKGROUND","BAD","BAG","BALANCE","BALL","BAND","BANK","BAR","BASE","BASIC","BASIS","BATTLE","BE","BEAR","BEAT","BEAUTIFUL","BECAUSE","BECOME","BED","BEDROOM","BEFORE","BEGIN","BEGINNING","BEHAVIOUR","BEHIND","BELIEF","BELIEVE","BELONG","BELOW","BENEATH","BENEFIT","BESIDE","BEST","BETTER","BETWEEN","BEYOND","BIG","BILL","BIND","BIRD","BIRTH","BIT","BLACK","BLOCK","BLOOD","BLOODY","BLOW","BLUE","BOARD","BOAT","BODY","BONE","BOOK","BORDER","BOTH","BOTTLE","BOTTOM","BOX","BOY","BRAIN","BRANCH","BREAK","BREATH","BRIDGE","BRIEF","BRIGHT","BRING","BROAD","BROTHER","BUDGET","BUILD","BUILDING","BURN","BUS","BUSINESS","BUSY","BUT","BUY","BY","CABINET","CALL","CAMPAIGN","CAN","CANDIDATE","CAPABLE","CAPACITY","CAPITAL","CAR","CARD","CARE","CAREER","CAREFUL","CAREFULLY","CARRY","CASE","CASH","CAT","CATCH","CATEGORY","CAUSE","CELL","CENTRAL","CENTRE","CENTURY","CERTAIN","CERTAINLY","CHAIN","CHAIR","CHAIRMAN","CHALLENGE","CHANCE","CHANGE","CHANNEL","CHAPTER","CHARACTER","CHARACTERISTIC","CHARGE","CHEAP","CHECK","CHEMICAL","CHIEF","CHILD","CHOICE","CHOOSE","CHURCH","CIRCLE","CIRCUMSTANCE","CITIZEN","CITY","CIVIL","CLAIM","CLASS","CLEAN","CLEAR","CLEARLY","CLIENT","CLIMB","CLOSE","CLOSELY","CLOTHES","CLUB","COAL","CODE","COFFEE","COLD","COLLEAGUE","COLLECT","COLLECTION","COLLEGE","COLOUR","COMBINATION","COMBINE","COME","COMMENT","COMMERCIAL","COMMISSION","COMMIT","COMMITMENT","COMMITTEE","COMMON","COMMUNICATION","COMMUNITY","COMPANY","COMPARE","COMPARISON","COMPETITION","COMPLETE","COMPLETELY","COMPLEX","COMPONENT","COMPUTER","CONCENTRATE","CONCENTRATION","CONCEPT","CONCERN","CONCERNED","CONCLUDE","CONCLUSION","CONDITION","CONDUCT","CONFERENCE","CONFIDENCE","CONFIRM","CONFLICT","CONGRESS","CONNECT","CONNECTION","CONSEQUENCE","CONSERVATIVE","CONSIDER","CONSIDERABLE","CONSIDERATION","CONSIST","CONSTANT","CONSTRUCTION","CONSUMER","CONTACT","CONTAIN","CONTENT","CONTEXT","CONTINUE","CONTRACT","CONTRAST","CONTRIBUTE","CONTRIBUTION","CONTROL","CONVENTION","CONVERSATION","COPY","CORNER","CORPORATE","CORRECT","COS","COST","COULD","COUNCIL","COUNT","COUNTRY","COUNTY","COUPLE","COURSE","COURT","COVER","CREATE","CREATION","CREDIT","CRIME","CRIMINAL","CRISIS","CRITERION","CRITICAL","CRITICISM","CROSS","CROWD","CRY","CULTURAL","CULTURE","CUP","CURRENT","CURRENTLY","CURRICULUM","CUSTOMER","CUT","DAMAGE","DANGER","DANGEROUS","DARK","DATA","DATE","DAUGHTER","DAY","DEAD","DEAL","DEATH","DEBATE","DEBT","DECADE","DECIDE","DECISION","DECLARE","DEEP","DEFENCE","DEFENDANT","DEFINE","DEFINITION","DEGREE","DELIVER","DEMAND","DEMOCRATIC","DEMONSTRATE","DENY","DEPARTMENT","DEPEND","DEPUTY","DERIVE","DESCRIBE","DESCRIPTION","DESIGN","DESIRE","DESK","DESPITE","DESTROY","DETAIL","DETAILED","DETERMINE","DEVELOP","DEVELOPMENT","DEVICE","DIE","DIFFERENCE","DIFFERENT","DIFFICULT","DIFFICULTY","DINNER","DIRECT","DIRECTION","DIRECTLY","DIRECTOR","DISAPPEAR","DISCIPLINE","DISCOVER","DISCUSS","DISCUSSION","DISEASE","DISPLAY","DISTANCE","DISTINCTION","DISTRIBUTION","DISTRICT","DIVIDE","DIVISION","DO","DOCTOR","DOCUMENT","DOG","DOMESTIC","DOOR","DOUBLE","DOUBT","DOWN","DRAW","DRAWING","DREAM","DRESS","DRINK","DRIVE","DRIVER","DROP","DRUG","DRY","DUE","DURING","DUTY","EACH","EAR","EARLY","EARN","EARTH","EASILY","EAST","EASY","EAT","ECONOMIC","ECONOMY","EDGE","EDITOR","EDUCATION","EDUCATIONAL","EFFECT","EFFECTIVE","EFFECTIVELY","EFFORT","EGG","EITHER","ELDERLY","ELECTION","ELEMENT","ELSE","ELSEWHERE","EMERGE","EMPHASIS","EMPLOY","EMPLOYEE","EMPLOYER","EMPLOYMENT","EMPTY","ENABLE","ENCOURAGE","END","ENEMY","ENERGY","ENGINE","ENGINEERING","ENJOY","ENOUGH","ENSURE","ENTER","ENTERPRISE","ENTIRE","ENTIRELY","ENTITLE","ENTRY","ENVIRONMENT","ENVIRONMENTAL","EQUAL","EQUALLY","EQUIPMENT","ERROR","ESCAPE","ESPECIALLY","ESSENTIAL","ESTABLISH","ESTABLISHMENT","ESTATE","ESTIMATE","EVEN","EVENING","EVENT","EVENTUALLY","EVER","EVERY","EVERYBODY","EVERYONE","EVERYTHING","EVIDENCE","EXACTLY","EXAMINATION","EXAMINE","EXAMPLE","EXCELLENT","EXCEPT","EXCHANGE","EXECUTIVE","EXERCISE","EXHIBITION","EXIST","EXISTENCE","EXISTING","EXPECT","EXPECTATION","EXPENDITURE","EXPENSE","EXPENSIVE","EXPERIENCE","EXPERIMENT","EXPERT","EXPLAIN","EXPLANATION","EXPLORE","EXPRESS","EXPRESSION","EXTEND","EXTENT","EXTERNAL","EXTRA","EXTREMELY","EYE","FACE","FACILITY","FACT","FACTOR","FACTORY","FAIL","FAILURE","FAIR","FAIRLY","FAITH","FALL","FAMILIAR","FAMILY","FAMOUS","FAR","FARM","FARMER","FASHION","FAST","FATHER","FAVOUR","FEAR","FEATURE","FEE","FEEL","FEELING","FEMALE","FEW","FIELD","FIGHT","FIGURE","FILE","FILL","FILM","FINAL","FINALLY","FINANCE","FINANCIAL","FIND","FINDING","FINE","FINGER","FINISH","FIRE","FIRM","FIRST","FISH","FIT","FIX","FLAT","FLIGHT","FLOOR","FLOW","FLOWER","FLY","FOCUS","FOLLOW","FOLLOWING","FOOD","FOOT","FOOTBALL","FOR","FORCE","FOREIGN","FOREST","FORGET","FORM","FORMAL","FORMER","FORWARD","FOUNDATION","FREE","FREEDOM","FREQUENTLY","FRESH","FRIEND","FROM","FRONT","FRUIT","FUEL","FULL","FULLY","FUNCTION","FUND","FUNNY","FURTHER","FUTURE","GAIN","GAME","GARDEN","GAS","GATE","GATHER","GENERAL","GENERALLY","GENERATE","GENERATION","GENTLEMAN","GET","GIRL","GIVE","GLASS","GO","GOAL","GOD","GOLD","GOOD","GOVERNMENT","GRANT","GREAT","GREEN","GREY","GROUND","GROUP","GROW","GROWING","GROWTH","GUEST","GUIDE","GUN","HAIR","HALF","HALL","HAND","HANDLE","HANG","HAPPEN","HAPPY","HARD","HARDLY","HATE","HAVE","HE","HEAD","HEALTH","HEAR","HEART","HEAT","HEAVY","HELL","HELP","HENCE","HER","HERE","HERSELF","HIDE","HIGH","HIGHLY","HILL","HIM","HIMSELF","HIS","HISTORICAL","HISTORY","HIT","HOLD","HOLE","HOLIDAY","HOME","HOPE","HORSE","HOSPITAL","HOT","HOTEL","HOUR","HOUSE","HOUSEHOLD","HOUSING","HOW","HOWEVER","HUGE","HUMAN","HURT","HUSBAND","I","IDEA","IDENTIFY","IF","IGNORE","ILLUSTRATE","IMAGE","IMAGINE","IMMEDIATE","IMMEDIATELY","IMPACT","IMPLICATION","IMPLY","IMPORTANCE","IMPORTANT","IMPOSE","IMPOSSIBLE","IMPRESSION","IMPROVE","IMPROVEMENT","IN","INCIDENT","INCLUDE","INCLUDING","INCOME","INCREASE","INCREASED","INCREASINGLY","INDEED","INDEPENDENT","INDEX","INDICATE","INDIVIDUAL","INDUSTRIAL","INDUSTRY","INFLUENCE","INFORM","INFORMATION","INITIAL","INITIATIVE","INJURY","INSIDE","INSIST","INSTANCE","INSTEAD","INSTITUTE","INSTITUTION","INSTRUCTION","INSTRUMENT","INSURANCE","INTEND","INTENTION","INTEREST","INTERESTED","INTERESTING","INTERNAL","INTERNATIONAL","INTERPRETATION","INTERVIEW","INTO","INTRODUCE","INTRODUCTION","INVESTIGATE","INVESTIGATION","INVESTMENT","INVITE","INVOLVE","IRON","IS","ISLAND","ISSUE","IT","ITEM","ITS","ITSELF","JOB","JOIN","JOINT","JOURNEY","JUDGE","JUMP","JUST","JUSTICE","KEEP","KEY","KID","KILL","KIND","KING","KITCHEN","KNEE","KNOW","KNOWLEDGE","LABOUR","LACK","LADY","LAND","LANGUAGE","LARGE","LARGELY","LAST","LATE","LATER","LATTER","LAUGH","LAUNCH","LAW","LAWYER","LAY","LEAD","LEADER","LEADERSHIP","LEADING","LEAF","LEAGUE","LEAN","LEARN","LEAST","LEAVE","LEFT","LEG","LEGAL","LEGISLATION","LENGTH","LESS","LET","LETTER","LEVEL","LIABILITY","LIBERAL","LIBRARY","LIE","LIFE","LIFT","LIGHT","LIKE","LIKELY","LIMIT","LIMITED","LINE","LINK","LIP","LIST","LISTEN","LITERATURE","LITTLE","LIVE","LIVING","LOAN","LOCAL","LOCATION","LONG","LOOK","LORD","LOSE","LOSS","LOT","LOVE","LOVELY","LOW","LUNCH","MACHINE","MAGAZINE","MAIN","MAINLY","MAINTAIN","MAJOR","MAJORITY","MAKE","MALE","MAN","MANAGE","MANAGEMENT","MANAGER","MANNER","MANY","MAP","MARK","MARKET","MARRIAGE","MARRIED","MARRY","MASS","MASTER","MATCH","MATERIAL","MATTER","MAY","MAYBE","ME","MEAL","MEAN","MEANING","MEANS","MEANWHILE","MEASURE","MECHANISM","MEDIA","MEDICAL","MEET","MEETING","MEMBER","MEMBERSHIP","MEMORY","MENTAL","MENTION","MERELY","MESSAGE","METAL","METHOD","MIDDLE","MIGHT","MILE","MILITARY","MILK","MIND","MINE","MINISTER","MINISTRY","MINUTE","MISS","MISTAKE","MODEL","MODERN","MODULE","MOMENT","MONEY","MONTH","MORE","MORNING","MOST","MOTHER","MOTION","MOTOR","MOUNTAIN","MOUTH","MOVE","MOVEMENT","MUCH","MURDER","MUSEUM","MUSIC","MUST","MY","MYSELF","NAME","NARROW","NATION","NATIONAL","NATURAL","NATURE","NEAR","NEARLY","NECESSARILY","NECESSARY","NECK","NEED","NEGOTIATION","NEIGHBOUR","NEITHER","NETWORK","NEVER","NEVERTHELESS","NEW","NEWS","NEWSPAPER","NEXT","NICE","NIGHT","NO","NOBODY","NOD","NOISE","NONE","NOR","NORMAL","NORMALLY","NORTH","NORTHERN","NOSE","NOT","NOTE","NOTHING","NOTICE","NOTION","NOW","NUCLEAR","NUMBER","NURSE","OBJECT","OBJECTIVE","OBSERVATION","OBSERVE","OBTAIN","OBVIOUS","OBVIOUSLY","OCCASION","OCCUR","ODD","OF","OFF","OFFENCE","OFFER","OFFICE","OFFICER","OFFICIAL","OFTEN","OIL","OKAY","OLD","ON","ONCE","ONE","ONLY","ONTO","OPEN","OPERATE","OPERATION","OPINION","OPPORTUNITY","OPPOSITION","OPTION","OR","ORDER","ORDINARY","ORGANISATION","ORGANISE","ORGANIZATION","ORIGIN","ORIGINAL","OTHER","OTHERWISE","OUGHT","OUR","OURSELVES","OUT","OUTCOME","OUTPUT","OUTSIDE","OVER","OVERALL","OWN","OWNER","PACKAGE","PAGE","PAIN","PAINT","PAINTING","PAIR","PANEL","PAPER","PARENT","PARK","PARLIAMENT","PART","PARTICULAR","PARTICULARLY","PARTLY","PARTNER","PARTY","PASS","PASSAGE","PAST","PATH","PATIENT","PATTERN","PAY","PAYMENT","PEACE","PENSION","PEOPLE","PER","PERCENT","PERFECT","PERFORM","PERFORMANCE","PERHAPS","PERIOD","PERMANENT","PERSON","PERSONAL","PERSUADE","PHASE","PHONE","PHOTOGRAPH","PHYSICAL","PICK","PICTURE","PIECE","PLACE","PLAN","PLANNING","PLANT","PLASTIC","PLATE","PLAY","PLAYER","PLEASE","PLEASURE","PLENTY","PLUS","POCKET","POINT","POLICE","POLICY","POLITICAL","POLITICS","POOL","POOR","POPULAR","POPULATION","POSITION","POSITIVE","POSSIBILITY","POSSIBLE","POSSIBLY","POST","POTENTIAL","POUND","POWER","POWERFUL","PRACTICAL","PRACTICE","PREFER","PREPARE","PRESENCE","PRESENT","PRESIDENT","PRESS","PRESSURE","PRETTY","PREVENT","PREVIOUS","PREVIOUSLY","PRICE","PRIMARY","PRIME","PRINCIPLE","PRIORITY","PRISON","PRISONER","PRIVATE","PROBABLY","PROBLEM","PROCEDURE","PROCESS","PRODUCE","PRODUCT","PRODUCTION","PROFESSIONAL","PROFIT","PROGRAM","PROGRAMME","PROGRESS","PROJECT","PROMISE","PROMOTE","PROPER","PROPERLY","PROPERTY","PROPORTION","PROPOSE","PROPOSAL","PROSPECT","PROTECT","PROTECTION","PROVE","PROVIDE","PROVIDED","PROVISION","PUB","PUBLIC","PUBLICATION","PUBLISH","PULL","PUPIL","PURPOSE","PUSH","PUT","QUALITY","QUARTER","QUESTION","QUICK","QUICKLY","QUIET","QUITE","RACE","RADIO","RAILWAY","RAIN","RAISE","RANGE","RAPIDLY","RARE","RATE","RATHER","REACH","REACTION","READ","READER","READING","READY","REAL","REALISE","REALITY","REALIZE","REALLY","REASON","REASONABLE","RECALL","RECEIVE","RECENT","RECENTLY","RECOGNISE","RECOGNITION","RECOGNIZE","RECOMMEND","RECORD","RECOVER","RED","REDUCE","REDUCTION","REFER","REFERENCE","REFLECT","REFORM","REFUSE","REGARD","REGION","REGIONAL","REGULAR","REGULATION","REJECT","RELATE","RELATION","RELATIONSHIP","RELATIVE","RELATIVELY","RELEASE","RELEVANT","RELIEF","RELIGION","RELIGIOUS","RELY","REMAIN","REMEMBER","REMIND","REMOVE","REPEAT","REPLACE","REPLY","REPORT","REPRESENT","REPRESENTATION","REPRESENTATIVE","REQUEST","REQUIRE","REQUIREMENT","RESEARCH","RESOURCE","RESPECT","RESPOND","RESPONSE","RESPONSIBILITY","RESPONSIBLE","REST","RESTAURANT","RESULT","RETAIN","RETURN","REVEAL","REVENUE","REVIEW","REVOLUTION","RICH","RIDE","RIGHT","RING","RISE","RISK","RIVER","ROAD","ROCK","ROLE","ROLL","ROOF","ROOM","ROUND","ROUTE","ROW","ROYAL","RULE","RUN","RURAL","SAFE","SAFETY","SALE","SAME","SAMPLE","SATISFY","SAVE","SAY","SCALE","SCENE","SCHEME","SCHOOL","SCIENCE","SCIENTIFIC","SCIENTIST","SCORE","SCREEN","SEA","SEARCH","SEASON","SEAT","SECOND","SECONDARY","SECRETARY","SECTION","SECTOR","SECURE","SECURITY","SEE","SEEK","SEEM","SELECT","SELECTION","SELL","SEND","SENIOR","SENSE","SENTENCE","SEPARATE","SEQUENCE","SERIES","SERIOUS","SERIOUSLY","SERVANT","SERVE","SERVICE","SESSION","SET","SETTLE","SETTLEMENT","SEVERAL","SEVERE","SEX","SEXUAL","SHAKE","SHALL","SHAPE","SHARE","SHE","SHEET","SHIP","SHOE","SHOOT","SHOP","SHORT","SHOT","SHOULD","SHOULDER","SHOUT","SHOW","SHUT","SIDE","SIGHT","SIGN","SIGNAL","SIGNIFICANCE","SIGNIFICANT","SILENCE","SIMILAR","SIMPLE","SIMPLY","SINCE","SING","SINGLE","SIR","SISTER","SIT","SITE","SITUATION","SIZE","SKILL","SKIN","SKY","SLEEP","SLIGHTLY","SLIP","SLOW","SLOWLY","SMALL","SMILE","SO","SOCIAL","SOCIETY","SOFT","SOFTWARE","SOIL","SOLDIER","SOLICITOR","SOLUTION","SOME","SOMEBODY","SOMEONE","SOMETHING","SOMETIMES","SOMEWHAT","SOMEWHERE","SON","SONG","SOON","SORRY","SORT","SOUND","SOURCE","SOUTH","SOUTHERN","SPACE","SPEAK","SPEAKER","SPECIAL","SPECIES","SPECIFIC","SPEECH","SPEED","SPEND","SPIRIT","SPORT","SPOT","SPREAD","SPRING","STAFF","STAGE","STAND","STANDARD","STAR","START","STATE","STATEMENT","STATION","STATUS","STAY","STEAL","STEP","STICK","STILL","STOCK","STONE","STOP","STORE","STORY","STRAIGHT","STRANGE","STRATEGY","STREET","STRENGTH","STRIKE","STRONG","STRONGLY","STRUCTURE","STUDENT","STUDIO","STUDY","STUFF","STYLE","SUBJECT","SUBSTANTIAL","SUCCEED","SUCCESS","SUCCESSFUL","SUCH","SUDDENLY","SUFFER","SUFFICIENT","SUGGEST","SUGGESTION","SUITABLE","SUM","SUMMER","SUN","SUPPLY","SUPPORT","SUPPOSE","SURE","SURELY","SURFACE","SURPRISE","SURROUND","SURVEY","SURVIVE","SWITCH","SYSTEM","TABLE","TAKE","TALK","TALL","TAPE","TARGET","TASK","TAX","TEA","TEACH","TEACHER","TEACHING","TEAM","TEAR","TECHNICAL","TECHNIQUE","TECHNOLOGY","TELEPHONE","TELEVISION","TELL","TEMPERATURE","TEND","TERM","TERMS","TERRIBLE","TEST","TEXT","THAN","THANK","THANKS","THAT","THE","THEATRE","THEIR","THEM","THEME","THEMSELVES","THEN","THEORY","THERE","THEREFORE","THESE","THEY","THIN","THING","THINK","THIS","THOSE","THOUGH","THOUGHT","THREAT","THREATEN","THROUGH","THROUGHOUT","THROW","THUS","TICKET","TIME","TINY","TITLE","TO","TODAY","TOGETHER","TOMORROW","TONE","TONIGHT","TOO","TOOL","TOOTH","TOP","TOTAL","TOTALLY","TOUCH","TOUR","TOWARDS","TOWN","TRACK","TRADE","TRADITION","TRADITIONAL","TRAFFIC","TRAIN","TRAINING","TRANSFER","TRANSPORT","TRAVEL","TREAT","TREATMENT","TREATY","TREE","TREND","TRIAL","TRIP","TROOP","TROUBLE","TRUE","TRUST","TRUTH","TRY","TURN","TWICE","TYPE","TYPICAL","UNABLE","UNDER","UNDERSTAND","UNDERSTANDING","UNDERTAKE","UNEMPLOYMENT","UNFORTUNATELY","UNION","UNIT","UNITED","UNIVERSITY","UNLESS","UNLIKELY","UNTIL","UP","UPON","UPPER","URBAN","US","USE","USED","USEFUL","USER","USUAL","USUALLY","VALUE","VARIATION","VARIETY","VARIOUS","VARY","VAST","VEHICLE","VERSION","VERY","VIA","VICTIM","VICTORY","VIDEO","VIEW","VILLAGE","VIOLENCE","VISION","VISIT","VISITOR","VITAL","VOICE","VOLUME","VOTE","WAGE","WAIT","WALK","WALL","WANT","WAR","WARM","WARN","WASH","WATCH","WATER","WAVE","WAY","WE","WEAK","WEAPON","WEAR","WEATHER","WEEK","WEEKEND","WEIGHT","WELCOME","WELFARE","WELL","WEST","WESTERN","WHAT","WHATEVER","WHEN","WHERE","WHEREAS","WHETHER","WHICH","WHILE","WHILST","WHITE","WHO","WHOLE","WHOM","WHOSE","WHY","WIDE","WIDELY","WIFE","WILD","WILL","WIN","WIND","WINDOW","WINE","WING","WINNER","WINTER","WISH","WITH","WITHDRAW","WITHIN","WITHOUT","WOMAN","WONDER","WONDERFUL","WOOD","WORD","WORK","WORKER","WORKING","WORKS","WORLD","WORRY","WORTH","WOULD","WRITE","WRITER","WRITING","WRONG","YARD","YEAH","YEAR","YES","YESTERDAY","YET","YOU","YOUNG","YOUR","YOURSELF","YOUTH"
+#+end_src
+** src
+#+begin_src odin :main no :tangle coded_tri_nums.odin
+package pe
+
+import "core:os"
+import "core:fmt"
+import "core:strings"
+
+tri_num :: proc(num : int) -> bool {
+  n := num * 2
+  for i in 1..<9000 {
+    if n % i == 0 && n / i == i + 1 {
+      return true
+    }
+  }
+  return false
+}
+
+main :: proc() {
+  file, err := os.open("words.txt", ); defer os.close(file)
+  data, ok := os.read_entire_file(file)
+  data1 := strings.split_lines(string(data))[0]
+  words : []string
+  cnt := 0
+  if ok {
+    words = strings.split(data1, ",")
+    for w in words {
+      //fmt.println(w[1:len(w)-1])
+      word := w[1:len(w)-1]
+      wcnt := 0
+      for i in word {
+        wcnt += cast(int)(i-'A')+1
+      }
+      if tri_num(wcnt) {
+        cnt += 1
+      }
+    }
+  }
+  fmt.println(cnt)
+}
+#+end_src
+
+#+RESULTS:
+: 162
+
+* Prob 043 - Sub-string divisibility
+The number, 1406357289, is a 0 to 9 pandigital number because it is made up of
+each of the digits 0 to 9 in some order, but it also has a rather interesting
+sub-string divisibility property.
+
+Let d1 be the 1st digit, d2 be the 2nd digit, and so on. In this way, we note
+the following:
+
+d2d3d4=406 is divisible by 2
+d3d4d5=063 is divisible by 3
+d4d5d6=635 is divisible by 5
+d5d6d7=357 is divisible by 7
+d6d7d8=572 is divisible by 11
+d7d8d9=728 is divisible by 13
+d8d9d10=289 is divisible by 17
+Find the sum of all 0 to 9 pandigital numbers with this property.
+
+#+begin_src odin :main no :tangle sub-string-div.odin
+package pe_043
+
+import "core:os"
+import "core:fmt"
+import "core:strings"
+import "core:strconv"
+import "util" 
+
+sub_string_div :: proc(num: string) -> bool {
+  d2,_ := strconv.parse_int(num[1:4])
+  d3,_ := strconv.parse_int(num[2:5])
+  d4,_ := strconv.parse_int(num[3:6])
+  d5,_ := strconv.parse_int(num[4:7])
+  d6,_ := strconv.parse_int(num[5:8])
+  d7,_ := strconv.parse_int(num[6:9])
+  d8,_ := strconv.parse_int(num[7:10])
+  if d2 % 2 == 0 &&
+    d3 % 3 == 0 &&
+    d4 % 5 == 0 &&
+    d5 % 7 == 0 &&
+    d6 % 11 == 0 &&
+    d7 % 13 == 0 &&
+    d8 % 17 == 0 {
+      return true
+    }
+  return false
+}
+
+main :: proc() {
+  ret : [dynamic]string; defer delete(ret)
+  N :: 9
+  str := ""
+  for i in 0..=N {
+    str = fmt.tprintf("%s%d", str, i)
+  }
+  util.permute(str, 0, N, &ret)
+
+  total := 0
+  for i in ret {
+    if sub_string_div(i) {
+      //fmt.println(i)
+      num,_ := strconv.parse_int(i)
+      total += num
+    }
+  }
+  fmt.println(total)
+}
+#+end_src
+
+#+RESULTS:
+: 16695334890
+
+* Prob 044 - Pentagon numbers
+Pentagonal numbers are generated by the formula, Pn=n(3n−1)/2. The first ten
+pentagonal numbers are:
+
+1, 5, 12, 22, 35, 51, 70, 92, 117, 145, ...
+
+It can be seen that P4 + P7 = 22 + 70 = 92 = P8. However, their difference, 70 −
+22 = 48, is not pentagonal.
+
+Find the pair of pentagonal numbers, Pj and Pk, for which their sum and
+difference are pentagonal and D = |Pk − Pj| is minimised; what is the value of
+D?
+
+#+begin_src odin :main no
+ import "core:fmt"
+ import "core:math"
+
+ is_pentagonal :: proc(x: int) -> bool {
+   r := math.sqrt_f64(1 + 24 * cast(f64)x)
+   n, frac := math.modf(r)
+   if frac == 0.0 {
+     return cast(u64)n % 6 == 5
+   }
+   return false
+ }
+
+ main :: proc() {
+   nums := [dynamic]int{ 1, 5, 12 }; defer delete(nums)
+
+   n := 10
+   Pn := 22
+   for {
+     append(&nums, Pn)
+
+     for i in 0..<len(nums) {
+       a := Pn - nums[i]
+       b := nums[i]
+       if is_pentagonal(a) && is_pentagonal(abs(a - b)) {
+         fmt.println(abs(a - b))
+         return
+       }
+     }
+     n+=3; Pn+=n
+   }
+ }
+#+end_src
+
+#+RESULTS:
+: 5482660
+
+* Prob 045 - Triangular, pentagonal, and hexagonal
+Triangle, pentagonal, and hexagonal numbers are generated by the following
+formulae:
+
+Triangle	 	Tn=n(n+1)/2	 	1, 3, 6, 10, 15, ...
+Pentagonal	 	Pn=n(3n−1)/2	 	1, 5, 12, 22, 35, ...
+Hexagonal	 	Hn=n(2n−1)	 	1, 6, 15, 28, 45, ...
+It can be verified that T285 = P165 = H143 = 40755.
+
+Find the next triangle number that is also pentagonal and hexagonal.
+
+#+begin_src odin :main no
+ import "core:fmt"
+ import "core:math"
+
+ is_pentagonal :: proc(x: u64) -> bool {
+   r := math.sqrt_f64(1 + 24 * cast(f64)x)
+   n, frac := math.modf(r)
+   if frac == 0.0 {
+     return cast(u64)n % 6 == 5
+   }
+   return false
+ }
+
+ main :: proc() {
+   for m : u64 = 144; ; m+=1 {
+     res : u64 = 2 * m * m - m // hex num is a tri num with n = 2m - 1 (the odd tri num indexes)
+     if is_pentagonal(res) {
+       fmt.println(res)
+       break
+     }
+   }
+ }
+#+end_src
+
+#+RESULTS:
+: 1533776805
+
+* Prob 046 - Goldbach's other conjecture
+It was proposed by Christian Goldbach that every odd composite number can be
+written as the sum of a prime and twice a square.
+
+9 = 7 + 2×1^2
+15 = 7 + 2×2^2
+21 = 3 + 2×3^2
+25 = 7 + 2×3^2
+27 = 19 + 2×2^2
+33 = 31 + 2×1^2
+
+It turns out that the conjecture was false.
+
+What is the smallest odd composite that cannot be written as the sum of a prime
+and twice a square?
+
+#+begin_src odin :main no :tangle goldbach.odin
+ import "core:fmt"
+ import "core:math"
+ import "util"
+
+ is_2sq :: proc(x: int) -> bool {
+   if x % 2 != 0 do return false
+   num := x / 2
+   r := math.sqrt_f64(cast(f64)num)
+   n, frac := math.modf(r)
+   if frac != 0.0 do return false
+   return true
+ }
+
+ is_sum_of_prime_and_2sq :: proc(x: int) -> bool {
+   num := x - 2
+   for ; num > 0; num-=2{
+     if !util.is_prime(num) do continue
+     if is_2sq(x-num) do return true
+   }
+   return false
+ }
+
+ main :: proc() {
+   num := 9
+   for {
+     num += 2
+     if util.is_prime(num) do continue
+     //fmt.println(num, is_sum_of_prime_and_2sq(num))
+     if is_sum_of_prime_and_2sq(num) do continue
+     fmt.println(num)
+     break
+   }
+ }
+#+end_src
+
+#+RESULTS:
+: 5777
+
+* Prob 047 - Distinct primes factors
+The first two consecutive numbers to have two distinct prime factors are:
+14 = 2 × 7
+15 = 3 × 5
+
+The first three consecutive numbers to have three distinct prime factors are:
+644 = 2² × 7 × 23
+645 = 3 × 5 × 43
+646 = 2 × 17 × 19.
+
+Find the first four consecutive integers to have four distinct prime factors
+each. What is the first of these numbers?
+
+Here _distinct_ doesn't mean the primes from 14 and 15 have to be different,
+just that there is 2 prime factors in each (this did not register with my mind
+at first, so yeah! that sucked)
+
+#+begin_src odin :main no :tangle distinct_primes.odin
+import "core:fmt"
+import "util"
+
+Prime_Factor :: struct {
+  prime : int,
+  power : int,
+}
+
+// either increment (add 1 to power of a prime factor) or add this prime factor to the list
+inc_or_add :: proc(x: int, list: ^[dynamic]Prime_Factor) {
+  found := false
+  for &i in list {
+    if i.prime == x {
+      i.power += 1 // inc
+      found = true
+    }
+  }
+  if !found {
+    append(list, Prime_Factor{x, 1})
+  }
+}
+
+get_prime_factorization :: proc(x: int, list: ^[dynamic]Prime_Factor) {
+  n := x
+  tmp := x / 2
+  clear(list)
+  for i in 2..=tmp {     // put all prime factors into list
+    if util.is_prime(i) {
+      for; n % i == 0; { // this prime divides x
+        inc_or_add(i, list)
+        n = n / i        // correct here right? can it be: n / i - 1 ? is div slow?
+      }
+    }
+  }
+  return
+}
+
+main :: proc() {
+  C :: 4    // consecutive
+  num := 11 // start search from here
+  list : [C][dynamic]Prime_Factor
+  for i in 0..<C {
+    get_prime_factorization(num - i, &list[C-i-1])
+  }
+  found := false
+  for {
+    // compare length of pfactors in list
+    found = true
+    for i in 0..<C {
+      if len(list[i]) != C {
+        found = false // one of 'em is not length C, boo
+        break
+      }
+    }
+    if found do break
+    // shift things down, get next numbers prime factors, try again
+    for i in 0..<C-1 {
+      list[i] = list[i+1]
+    }
+    num += 1
+    get_prime_factorization(num, &list[C-1])
+    // fmt.println(num)... this takes SOOOO long to find you might want to include this to see how far you've come
+  }
+  tmp := ""
+  for i in 0..<C {
+    tmp = fmt.tprintf("%s %v", tmp, num-i)
+  }
+  fmt.println(C, tmp)
+}
+#+end_src
+
+* Prob 048 - Self Powers
+The series, $1^1 + 2^2 + 3^3 + ... + 10^1^0 = 10405071317$.
+Find the last ten digits of the series, $1^1 + 2^2 + 3^3 + ... + 1000^1^0^0^0$.
+
+#+begin_src odin :main no :tangle self_powers.odin
+import "core:fmt"
+import "core:math"
+
+main :: proc() {
+  //fmt.println(math.pow_f64(1000,1000)) // too big! shows +Inf
+  // since all we care about is last 10 digits, can we make a special power proc?
+  // note: 9^9 is already 9 digits: 387420489
+  ten_digit_pow :: proc(base, exp: u128) -> u128 { // needs u128
+    val : u128 = 10_000_000_000
+    if base % 10 == 0 && exp % 10 == 0 {
+      return 0
+    } else if base == 16 && exp == 16 {
+      return 3709551616 // too big for u64, so pre-calc?... many other derpy combos in u64
+    } else if exp == 1 {
+      return base
+    } else if exp == 0 {
+      return 1
+    } else if exp < 0 {
+      return 0 // should never happen
+    } else if (exp % 2) == 0 {
+      half_pow := (ten_digit_pow(base, exp >> 1)) % val
+      return (half_pow * half_pow) % val
+    } else {
+      return (base * ten_digit_pow(base, exp - 1)) % val
+    }
+  }
+
+  acc2 : u128 = 0
+  for i in 1..=1000 {
+    tmp := ten_digit_pow(u128(i), u128(i))
+    acc2 += tmp
+    acc2 = acc2 % 10_000_000_000
+  }
+  fmt.println(acc2) // TODO: make work with u64?
+}
+#+end_src
+
+#+RESULTS:
+: 9110846700
+* Prob 049 - Prime Permutations
+The arithmetic sequence, $1487, 4817, 8147$, in which each of the terms
+increases by $3330$, is unusual in two ways:
+(i) each of the three terms are prime, and,
+(ii) each of the 4-digit numbers are permutations of one another.
+
+There are no arithmetic sequences made up of three 
+1-, 2-, or 3-digit primes, exhibiting this property, but there is one other
+4-digit increasing sequence.
+
+What 12-digit number do you form by concatenating the three terms in this
+sequence?
+
+#+begin_src odin :main no :tangle prime_permutations.odin
+import "core:fmt"
+import "util"
+
+are_2_premutations_prime :: proc(x: int) -> bool {
+  a : [4]u8
+  a.x = u8(x / 1000)
+  a.y = u8((x-int(a.x)*1000) / 100)
+  a.z = u8((x-int(a.x)*1000-int(a.y)*100) / 10)
+  a.w = u8(x % 10)
+
+  num : int
+  b := [23][4]u8{a.xywz,
+                 a.xzyw,
+                 a.xzwy,
+                 a.xwyz,
+                 a.xwzy,
+                 a.yxzw,
+                 a.yxwz,
+                 a.yzxw,
+                 a.yzwx,
+                 a.ywxz,
+                 a.ywzx,
+                 a.zxyw,
+                 a.zxwy,
+                 a.zyxw,
+                 a.zywx,
+                 a.zwxy,
+                 a.zwyx,
+                 a.wxyz,
+                 a.wxzy,
+                 a.wyxz,
+                 a.wyzx,
+                 a.wzxy,
+                 a.wzyx}
+
+  num_in_b :: proc(x: int, b: ^[23][4]u8) -> bool {
+    a : [4]u8
+    a.x = u8(x / 1000)
+    a.y = u8((x-int(a.x)*1000) / 100)
+    a.z = u8((x-int(a.x)*1000-int(a.y)*100) / 10)
+    a.w = u8(x % 10)
+    for bb in b {
+      if a == bb do return true
+    }
+    return false
+  }
+
+  for bb in b {
+    num = int(bb.x) * 1000 + int(bb.y) * 100 + int(bb.z) * 10 + int(bb.w)
+    if num <= x do continue
+    if util.is_prime(num) {
+      diff := num - x
+      num2 := num + diff
+      if num2 <= 9999 {
+        if util.is_prime(num2) && num_in_b(num2, &b) {
+          fmt.println(x, num, num2, diff)
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
+
+main :: proc() {
+  primes : [dynamic]int; defer delete(primes)
+  for x in 1000..=9999 {
+    if util.is_prime(x) {
+      append(&primes, x)
+    }
+  }
+  for x in primes {
+    are_2_premutations_prime(x)
+  }
+}
+#+end_src
+
+#+RESULTS:
+| 1487 | 4817 | 8147 | 3330 |
+| 2969 | 6299 | 9629 | 3330 |
+* Prob 050 - Consecutive Prime Sum
+The prime 41, can be written as the sum of six consecutive primes:
+  $41 = 2 + 3 + 5 + 7 + 11 + 13$
+
+This is the longest sum of consecutive primes that adds to a prime below
+one-hundred.
+
+The longest sum of consecutive primes below one-thousand that adds to a prime,
+contains 21 terms, and is equal to 953.
+
+Which prime, below one-million, can be written as the sum of the most
+consecutive primes?
+#+begin_src odin :main no :tangle consec_prime_sum.odin
+import "core:fmt"
+import "util"
+
+main :: proc() {
+  below := 1_000_000
+  primes : [dynamic]int; defer delete(primes)
+  pmarks : [dynamic]int; defer delete(pmarks)
+  for x in 2..=below {
+    if util.is_prime(x) {
+      append(&primes, x)
+      append(&pmarks, 0) // for marking longest consec prime starting @ this prime
+    }
+  }
+  // try all added together (as a window), then dec last prime from "window"
+  // then try move of window "down"
+  // so under 10 would look like 2+3+5+7=17 check prime.. would stop here, since this is longest, but 17 isn't below 10
+  // then 2+3+5=10 check prime
+  // then 3+5+7=15 check
+  // then 2+3=5 check
+  // then 3+5=8 check
+  // then 5+7=12 check
+  // then ... nothing length 1 of consec primes is meaningless
+  window_size := len(primes)
+  found := false
+  for ; window_size > 1 && !found; {
+    // a big window size checks many primes, if there was a way
+    // to go through once marking sequences that do add to prime
+    // that would be faster, right?
+    // so like 2+3+5=10 which is not prime, but 2+3=5 is
+    // mark prime 2 as having length 2 to make a prime
+    // ... so after 2+3+5=10 is done, next time we see prime 2 and window_size == pmark[prime_2's_idx].. we are done
+    // else skip to next
+    // TODO: this still takes like more than 35 seconds =(
+    
+    for s_idx := 0; s_idx + window_size <= len(primes); s_idx += 1 {
+      acc := 0
+      plen := 0
+      if pmarks[s_idx] == window_size {
+        for i in primes[s_idx:s_idx+window_size] {
+          acc += i
+        }
+        fmt.println("found", window_size, acc, primes[s_idx:s_idx+window_size])
+        found = true
+        break
+      } else if pmarks[s_idx] == 0 {
+        for i in s_idx..<(s_idx + window_size) {
+          acc += primes[i]
+          plen += 1
+          if plen > 1 && acc < below && util.is_prime(acc) {
+            pmarks[s_idx] = plen
+          }
+        }
+        if pmarks[s_idx] == 0 do pmarks[s_idx] = -1 // nothing here makes a prime, ignored in future
+      }
+    }
+    window_size -= 1
+  }
+}
+#+end_src
+
+#+RESULTS:
+| found 543 997651 [7 | 11 | 13 | 17 | 19 | 23 | 29 | 31 | 37 | 41 | 43 | 47 | 53 | 59 | 61 | 67 | 71 | 73 | 79 | 83 | 89 | 97 | 101 | 103 | 107 | 109 | 113 | 127 | 131 | 137 | 139 | 149 | 151 | 157 | 163 | 167 | 173 | 179 | 181 | 191 | 193 | 197 | 199 | 211 | 223 | 227 | 229 | 233 | 239 | 241 | 251 | 257 | 263 | 269 | 271 | 277 | 281 | 283 | 293 | 307 | 311 | 313 | 317 | 331 | 337 | 347 | 349 | 353 | 359 | 367 | 373 | 379 | 383 | 389 | 397 | 401 | 409 | 419 | 421 | 431 | 433 | 439 | 443 | 449 | 457 | 461 | 463 | 467 | 479 | 487 | 491 | 499 | 503 | 509 | 521 | 523 | 541 | 547 | 557 | 563 | 569 | 571 | 577 | 587 | 593 | 599 | 601 | 607 | 613 | 617 | 619 | 631 | 641 | 643 | 647 | 653 | 659 | 661 | 673 | 677 | 683 | 691 | 701 | 709 | 719 | 727 | 733 | 739 | 743 | 751 | 757 | 761 | 769 | 773 | 787 | 797 | 809 | 811 | 821 | 823 | 827 | 829 | 839 | 853 | 857 | 859 | 863 | 877 | 881 | 883 | 887 | 907 | 911 | 919 | 929 | 937 | 941 | 947 | 953 | 967 | 971 | 977 | 983 | 991 | 997 | 1009 | 1013 | 1019 | 1021 | 1031 | 1033 | 1039 | 1049 | 1051 | 1061 | 1063 | 1069 | 1087 | 1091 | 1093 | 1097 | 1103 | 1109 | 1117 | 1123 | 1129 | 1151 | 1153 | 1163 | 1171 | 1181 | 1187 | 1193 | 1201 | 1213 | 1217 | 1223 | 1229 | 1231 | 1237 | 1249 | 1259 | 1277 | 1279 | 1283 | 1289 | 1291 | 1297 | 1301 | 1303 | 1307 | 1319 | 1321 | 1327 | 1361 | 1367 | 1373 | 1381 | 1399 | 1409 | 1423 | 1427 | 1429 | 1433 | 1439 | 1447 | 1451 | 1453 | 1459 | 1471 | 1481 | 1483 | 1487 | 1489 | 1493 | 1499 | 1511 | 1523 | 1531 | 1543 | 1549 | 1553 | 1559 | 1567 | 1571 | 1579 | 1583 | 1597 | 1601 | 1607 | 1609 | 1613 | 1619 | 1621 | 1627 | 1637 | 1657 | 1663 | 1667 | 1669 | 1693 | 1697 | 1699 | 1709 | 1721 | 1723 | 1733 | 1741 | 1747 | 1753 | 1759 | 1777 | 1783 | 1787 | 1789 | 1801 | 1811 | 1823 | 1831 | 1847 | 1861 | 1867 | 1871 | 1873 | 1877 | 1879 | 1889 | 1901 | 1907 | 1913 | 1931 | 1933 | 1949 | 1951 | 1973 | 1979 | 1987 | 1993 | 1997 | 1999 | 2003 | 2011 | 2017 | 2027 | 2029 | 2039 | 2053 | 2063 | 2069 | 2081 | 2083 | 2087 | 2089 | 2099 | 2111 | 2113 | 2129 | 2131 | 2137 | 2141 | 2143 | 2153 | 2161 | 2179 | 2203 | 2207 | 2213 | 2221 | 2237 | 2239 | 2243 | 2251 | 2267 | 2269 | 2273 | 2281 | 2287 | 2293 | 2297 | 2309 | 2311 | 2333 | 2339 | 2341 | 2347 | 2351 | 2357 | 2371 | 2377 | 2381 | 2383 | 2389 | 2393 | 2399 | 2411 | 2417 | 2423 | 2437 | 2441 | 2447 | 2459 | 2467 | 2473 | 2477 | 2503 | 2521 | 2531 | 2539 | 2543 | 2549 | 2551 | 2557 | 2579 | 2591 | 2593 | 2609 | 2617 | 2621 | 2633 | 2647 | 2657 | 2659 | 2663 | 2671 | 2677 | 2683 | 2687 | 2689 | 2693 | 2699 | 2707 | 2711 | 2713 | 2719 | 2729 | 2731 | 2741 | 2749 | 2753 | 2767 | 2777 | 2789 | 2791 | 2797 | 2801 | 2803 | 2819 | 2833 | 2837 | 2843 | 2851 | 2857 | 2861 | 2879 | 2887 | 2897 | 2903 | 2909 | 2917 | 2927 | 2939 | 2953 | 2957 | 2963 | 2969 | 2971 | 2999 | 3001 | 3011 | 3019 | 3023 | 3037 | 3041 | 3049 | 3061 | 3067 | 3079 | 3083 | 3089 | 3109 | 3119 | 3121 | 3137 | 3163 | 3167 | 3169 | 3181 | 3187 | 3191 | 3203 | 3209 | 3217 | 3221 | 3229 | 3251 | 3253 | 3257 | 3259 | 3271 | 3299 | 3301 | 3307 | 3313 | 3319 | 3323 | 3329 | 3331 | 3343 | 3347 | 3359 | 3361 | 3371 | 3373 | 3389 | 3391 | 3407 | 3413 | 3433 | 3449 | 3457 | 3461 | 3463 | 3467 | 3469 | 3491 | 3499 | 3511 | 3517 | 3527 | 3529 | 3533 | 3539 | 3541 | 3547 | 3557 | 3559 | 3571 | 3581 | 3583 | 3593 | 3607 | 3613 | 3617 | 3623 | 3631 | 3637 | 3643 | 3659 | 3671 | 3673 | 3677 | 3691 | 3697 | 3701 | 3709 | 3719 | 3727 | 3733 | 3739 | 3761 | 3767 | 3769 | 3779 | 3793 | 3797 | 3803 | 3821 | 3823 | 3833 | 3847 | 3851 | 3853 | 3863 | 3877 | 3881 | 3889 | 3907 | 3911 | 3917 | 3919 | 3923 | 3929 | 3931] |
