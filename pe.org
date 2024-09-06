@@ -2735,8 +2735,8 @@ main :: proc() {
 #+end_src
 
 * Prob 048 - Self Powers
-The series, $1^1 + 2^2 + 3^3 + ... + 10^1^0 = 10405071317$.
-Find the last ten digits of the series, $1^1 + 2^2 + 3^3 + ... + 1000^1^0^0^0$.
+The series, $1^1 + 2^2 + 3^3 + ... + 10^{10} = 10405071317$.
+Find the last ten digits of the series, $1^1 + 2^2 + 3^3 + ... + 1000^{1000}$.
 
 #+begin_src odin :main no :tangle self_powers.odin
 import "core:fmt"
