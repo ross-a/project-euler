@@ -214,29 +214,112 @@ nCr :: proc(n, r: int) -> int {
 /*
 fmt.println("combination")
 arr : []int = []int{1,2,3,4}
-print_combinations(arr, 3)
+util.print_combinations(arr, 3)
 
 fmt.println("premutation") 
 ret : [dynamic]string
-permute("hello", 1,2, &ret)
+util.permute(strings.clone("hello"), 1,2, &ret)
 fmt.println(ret)
 ,*/
 #+end_src
 
 * Prob 001 - Multiples of 3 and 5
-#+begin_src odin
-limit := 1000
-sum := 0
-for i:=1; i < limit; i+=1 {
-  if (i % 3 == 0) || (i % 5 == 0) {
-    sum += i
+If we list all the natural numbers below $10$ that are multiples of $3$ or $5$,
+we get $3, 5, 6$ and $9$. The sum of these multiples is $23$.
+
+Find the sum of all the multiples of $3$ or $5$ below $1000$.
+
+#+begin_src odin :results none :main no :tangle src/multiples_of_three_and_five.odin
+package multiples_of_three_and_five
+
+import "core:fmt"
+import "core:mem"
+import "core:strings"
+import "vendor:raylib"
+
+MENU_RECT :: raylib.Rectangle{250, 10, 240, 150}
+
+Values :: struct {
+	show_menu  : bool,
+	width      : int,
+	height     : int,
+	percentage : f32,
+}
+
+draw_menu :: proc(values: ^Values) {
+  using raylib
+
+  menu_rect := MENU_RECT
+  menu_rect.x = f32(values.width) - menu_rect.x
+  if !values.show_menu {
+    values.show_menu = GuiButton(Rectangle{f32(values.width) - 40, 13, 18, 18}, "_")
+  } else {
+    panel := GuiPanel(menu_rect, "")
+    values.show_menu = !GuiButton(Rectangle{f32(values.width) - 40, 13, 18, 18}, "_")
+
+    GuiSlider(Rectangle{f32(values.width) - 185, 40, 160, 20}, "progress", "", &values.percentage, 0, 1)
+    str := fmt.tprintf("%v", values.percentage)
+    cstr := strings.clone_to_cstring(str)
+    GuiTextBox(Rectangle{f32(values.width) - 185, 40, 160, 20}, cstr, 10, false)
+	  delete(cstr)
   }
 }
-fmt.println("sum:", sum)
-#+end_src
 
-#+RESULTS:
-: sum: 233168
+
+main :: proc() {
+	using raylib
+
+	ta := mem.Tracking_Allocator{};
+	mem.tracking_allocator_init(&ta, context.allocator);
+	context.allocator = mem.tracking_allocator(&ta);
+
+	values : Values
+	values.show_menu = true
+	values.width = 600
+	values.height = 500
+
+	InitWindow(i32(values.width), i32(values.height), "I don't know what a window is")
+	SetTargetFPS(60)
+
+	for !WindowShouldClose() {
+		// Update ------------------------------
+
+		// Draw   ------------------------------
+		BeginDrawing()
+		ClearBackground(raylib.Color{224, 191, 184, 255})
+
+		accum := 0
+		for i in 1..<int(1000 * values.percentage) {
+			if i % 5 == 0 {
+				accum += i
+			} else if i % 3 == 0{
+				accum += i
+			}				
+		}
+		str := fmt.tprintf("Sum of 3 and 5,\nbelow %d = %d", int(1000 * values.percentage), accum)
+		cstr := strings.clone_to_cstring(str)
+		raylib.DrawText(cstr, 10, 250, 20, BLACK)
+		delete(cstr)
+
+		draw_menu(&values)
+		EndDrawing()
+	}
+	CloseWindow()
+
+	if len(ta.allocation_map) > 0 {
+		for _, v in ta.allocation_map {
+			fmt.printf("Leaked %v bytes @ %v\n", v.size, v.location);
+		}
+	}
+	if len(ta.bad_free_array) > 0 {
+		fmt.println("Bad frees:");
+		for v in ta.bad_free_array {
+			fmt.println(v);
+		}
+	}
+}
+
+#+end_src
 
 * Prob 002 - Even Fibonacci Number
 #+begin_src odin
@@ -247,7 +330,7 @@ fmt.println("sum:", sum)
     for i:i64=0; i<n; i+=1 {
       tmp := prev2
       prev2 = prev1 + prev2
-      if (prev2 > n) do break // don't cnt
+      if (prev2 > n) do break // don't cnt and done
       prev1 = tmp
       if (prev2 % 2) == 0 {
         sum += cast(f64)prev2

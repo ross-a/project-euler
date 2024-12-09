@@ -2505,3 +2505,712 @@ Find the sum of the only ordered set of six cyclic *4*-digit numbers for which
 each polygonal type: triangle, square, pentagonal, hexagonal, heptagonal, and
 octagonal, is represented by a different number in the set.
 
+#+begin_src odin :main no :comments link :tangle src/cyclical_figurate_numbers.odin
+package cyclical_figurate_numbers
+
+import "core:fmt"
+import "core:mem"
+import "core:strings"
+import "core:strconv"
+import "core:reflect"
+import "core:math/big"
+import "../util"
+
+IntString :: struct {
+	num : int,    // some num xxyy
+	xx  : string, // first 2 chars
+	yy  : string, // second 2
+}
+PolygonNumbers :: struct {
+	tri: map[string][dynamic]IntString, // triangle (map "xx" -> list of nums)
+	squ: map[string][dynamic]IntString, // square
+	pen: map[string][dynamic]IntString, // pentagon
+	hex: map[string][dynamic]IntString, // hexagon
+	hep: map[string][dynamic]IntString, // heptagon
+	oct: map[string][dynamic]IntString, // octagon
+}
+
+// one way to make the 6 lists of polygon numbers is to note that
+// triangle numbers can start the list n(n+1)/2:
+//1, 2,  3,  4,  5,  6
+//1, 3,  6, 10, 15, 21
+//1, 4,  9, 16, 25, 36
+//1, 5, 12, 22, 35, 51
+//1, 6, 15, 28, 45, 66
+//1, 7, 18, 34, 55, 81
+//1, 8, 21, 40, 65, 96
+// but then it's +0 +3 +6 +10 +15 etc... down the line/columns (which is the triangle numbers!)
+make_numbers :: proc(pn: ^PolygonNumbers) {
+	// numbers should be between 1000 & 9999
+	// so n(n+1)/2 ~= 1000  n(n+1) ~= 2000... sqrt(2000)?
+	// but oct should have smaller tri's to start it off?.. so, not 44ish
+	START :: 19
+	END :: 140
+	//START :: 1
+	//END :: 6
+	prev_tri : int = (START-1)*(START)/2
+
+	names := reflect.struct_field_names(PolygonNumbers)
+	for i in START..=END {
+		tri := IntString{i*(i+1)/2, "", ""}
+		tmp := tri.num
+		for idx:=0; idx<len(names); idx+=1 {
+			sf := reflect.struct_field_at(PolygonNumbers, idx)
+			if idx != 0 {
+				tri.num += prev_tri
+			}
+			tstr := fmt.tprintf("%04d", tri.num)
+			tri.xx = tstr[0:2]
+			tri.yy = tstr[2:4]
+			if tri.num > 1_000 && tri.num < 10_000 {
+			//if tri.num > 0 && tri.num < 10_000 {
+				ptr := rawptr(uintptr(pn) + sf.offset)
+				poly_map := cast(^map[string][dynamic]IntString)ptr
+				if !(tri.xx in poly_map) {
+					poly_map[tri.xx] = nil // create map for this xx
+				}
+				//fmt.println("adding", tri.num, "to", sf.name, i)
+				append(&poly_map[tri.xx], tri)
+			}
+		}
+		prev_tri = tmp
+	}
+}
+
+main :: proc() {
+
+	pn : PolygonNumbers
+	make_numbers(&pn)
+	
+	// pattern will look like: xxyy yyzz zzxx
+	// and one tri, squ and pentagon.. no dups
+
+	names := reflect.struct_field_names(PolygonNumbers)
+	//for idx:=0; idx<len(names); idx+=1 {
+	//	sf := reflect.struct_field_at(PolygonNumbers, idx)
+	//	ptr := rawptr((uintptr(&pn) + sf.offset))
+	//	fmt.println(sf.name, cast(^map[string][dynamic]IntString)ptr)
+	//}
+
+	// find in certain order::  tri, squ, pen... or tri, pen, squ
+	find_in_order :: proc(tr: IntString, squ, pen, hex, hep, oct: map[string][dynamic]IntString) -> bool {
+		// squ, pen, hex, hep, oct
+		if tr.yy in squ { // tri, squ, pen
+			for sq in squ[tr.yy] {
+				if sq.num == tr.num do continue
+				if sq.yy in pen {
+					for pe in pen[sq.yy] {
+						if pe.num == sq.num do continue
+						if hex == nil {
+							if pe.yy == tr.xx {
+								fmt.println("found", tr.num, sq.num, pe.num)
+								return true
+							}
+						}
+						if pe.yy in hex {
+							for hexx in hex[pe.yy] {
+								if hexx.num == pe.num do continue
+								if hexx.yy in hep {
+									for he in hep[hexx.yy] {
+										if pe.num == he.num do continue
+										if he.yy in oct {
+											for oc in oct[he.yy] {
+												if oc.num == he.num do continue
+												if oc.yy == tr.xx {
+													fmt.println("found", tr.num, sq.num, pe.num, hexx.num, he.num, oc.num)
+													return true
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return false
+	}
+
+	CONSIDER :: 5
+	ret := new([dynamic]string)
+	if CONSIDER == 5 {
+		util.permute(strings.clone("12345"), 0,4, ret)
+	} else {
+		util.permute(strings.clone("12"), 0,1, ret)
+	}
+	
+	for order in ret {
+		onums : [CONSIDER]int
+		for i in 0..<CONSIDER {
+			onums[i],_ = strconv.parse_int(order[i+0:i+1])
+		}
+		// squ, pen, hex, hep, oct
+		sf_at : [CONSIDER]reflect.Struct_Field
+		pn_order : [CONSIDER]^map[string][dynamic]IntString
+		for i in 0..<CONSIDER {
+			sf_at[i] = reflect.struct_field_at(PolygonNumbers, onums[i])
+			ptr := rawptr(uintptr(&pn) + sf_at[i].offset)
+			pn_order[i] = cast(^map[string][dynamic]IntString)ptr
+		}
+		
+		for trik, triv in pn.tri {
+			for tr in triv {
+				
+				//if find_in_order(tr, pn_order[0]^, pn_order[1]^, nil, nil, nil) {	return }
+				if find_in_order(tr, pn_order[0]^, pn_order[1]^, pn_order[2]^, pn_order[3]^, pn_order[4]^) do return
+				
+			}
+		}
+	}
+}
+#+end_src
+
+* Prob 062 - Cubic Permutations
+The cube, $41063625$ ($345^3$), can be permuted to produce two other cubes:
+$56623104$ ($384^3$) and $66430125$ ($405^3$). In fact, $41063625$ is the
+smallest cube which has exactly three permutations of its digits which are also
+cube.
+
+Find the smallest cube for which exactly five permutations of its digits are
+cube.
+
+#+begin_src odin :main no :comments link :tangle src/cubic_permutations.odin
+package cubic_permutations
+
+import "core:fmt"
+import "core:slice"
+import "core:math/big"
+import "../util"
+
+SomeCubed :: struct {
+	base: int,
+	num: ^big.Int,
+}
+
+cubed :: proc(n: int, sc: ^SomeCubed) {
+	if sc.num == nil {
+		sc.num = new(big.Int)
+	}
+	sc.base = n
+	big.int_pow_int(sc.num, n, 3)
+}
+
+main :: proc() {
+	PERMUTATIONS :: 5
+	START :: 345
+
+	the_cubes : map[string][dynamic]SomeCubed
+
+	for i:=START; ; i+=1 {
+		tmp : SomeCubed
+		cubed(i, &tmp)
+		str, err := big.itoa(tmp.num)
+		if err == .Okay {
+			// sort digits
+			str2 := make([]u8, len(str))
+			copy(str2,str)
+			slice.sort(str2)
+			// put in map and test if some number is reached
+			str3 := string(str2)
+			if !(str3 in the_cubes) {
+				the_cubes[str3] = nil
+			}
+			append(&the_cubes[str3], tmp)
+			
+			if len(the_cubes[str3]) >= PERMUTATIONS {
+				fmt.println("found!")
+				for j in 0..<PERMUTATIONS {
+					tmp2 := the_cubes[str3]
+					str,_ = big.itoa(tmp2[j].num)
+					fmt.println(tmp2[j].base, str)
+				}
+				break
+			}
+		}
+		
+	}
+}
+#+end_src
+
+* Prob 063 - Powerful Digit Counts
+The *5*-digit number, $16807=7^5$, is also a fifth power. Similarly, the
+*9*-digit number, $134217728=8^9$, is a ninth power.
+
+How many *n*-digit positive integers exist which are also an *n* th power?
+
+#+begin_src odin :main no :comments link :tangle src/powerful_digit_counts.odin
+package powerful_digit_counts
+
+import "core:fmt"
+import "core:math"
+import "core:math/big"
+
+main :: proc() {
+
+	cnt := 0
+	for base := 1; base <= 9; base +=1 { // i didn't think 1 to 9 would work at first, but it kinda makes sense, got lucky here
+		for exp := 0; exp <=29; exp += 1 { // this range i just guessed
+			num := new(big.Int)
+			big.int_pow_int(num, base, exp)
+			str,_ := big.itoa(num)
+			if len(str) == exp {
+				fmt.println("found", base, exp, str)
+				cnt += 1
+			}
+		}
+	}
+	fmt.println(cnt)
+	
+}
+#+end_src
+
+* Prob 064 - Odd Period Square Roots
+All square roots are periodic when written as continued fractions and can be
+written in the form:
+$\displaystyle \quad \quad \sqrt{N}=a_0+\frac 1 {a_1+\frac 1 {a_2+ \frac 1 {a3+ \dots}}}$
+
+For example, let us consider $\sqrt{23}:$  note: 23 > 4^2 = 16 and 23 is <
+5^2=25.. so take the 4:
+
+$\quad \quad \sqrt{23}=4+\sqrt{23}-4=4+\frac 1 {\frac 1 {\sqrt{23}-4}}=4+\frac 1
+{1+\frac{\sqrt{23}-3}7}$
+
+find a_0 = 4
+set nom and denom to 4/1
+for i 1 to exp_lvl {
+  swap nom and denom... to 1/4 for first iteration... 7/3 second... 14/21=2/3 third...
+
+  if at exp_lvl .add a_0
+  else {
+    tmp = take 23 - square denom (^2)... 23-16=7 first  ... 23-9=14 second... 23-9=14
+    a_x = nom*(a_0+denom) / tmp      ... 1(4+4)/7=1     ... 7(4+3)/14=3 ... 2(4+3)/14=1
+    nom = -[(-a_x*tmp)+(nom*denom)]  ... (-1*7)+(4*1)=-3... (-3*14)+(7*3)=-21...
+    denom = tmp
+  }
+}
+
+------------------------------
+
+swap first a0/guess to get nom/denom=1/4:  xx=sqrt(23)
+1 / (xx - 4) =
+(xx+4) / [(xx-4)(xx+4)] =
+(xx+4) / [23 - 16] =
+(xx+4) / 7 =
+(xx+4) / 7 ~= (4+4)/7 ~= 8/8 ~= 1... so a1 = 1
+removing a1
+(xx+4) / 7 =
+(1*7)/7 + [(-1*7) + (xx+4)]/7 =
+1 + [-7 + (xx+4)]/7 =
+1 + [(xx-3)]/7
+
+------------------------------
+
+swap above without the a1 to get:
+7 / (xx - 3) =
+7(xx+3) / [(xx-3)(xx+3)] =
+7(xx+3) / [23 - 9] =
+7(xx+3) / 14 =
+7(xx+3) / 14 ~= 7*(4+3) / 14 ~= 49/14 = 3.5.. so a2 = 3
+removing a2...
+7(xx+3) / 14 =
+(3*14)/14 + [(-3*14) + 7(xx+3)]/14 =
+3 + [(-42) + 21 + 7xx]/14 =
+3 + [-21 + 7xx]/14 =
+3 + [7(xx-3)]/14 =
+3 + (xx-3)/2
+
+------------------------------
+
+swap above without the a2 to get:
+2/ (xx - 3) =
+2(xx+3) / [(xx-3)(xx+3)] =
+2(xx+3) / [23 - 9] =
+2(xx+3) / 14 =
+2(xx+3) / 14 ~= 2(4+3) / 14 ~= 14/14 = 1... so a3 = 1
+removing a3...
+2(xx+3) / 14 =
+(1*14)/14 + [(-1*14) + 2(xx+3)]/14 =
+1 + [(-14) + 6 + 2(xx)]/14 =
+1 + [-8 + 2(xx)]/14 =
+1 + [2(xx - 4)]/14 =
+1 + (xx - 4)/7
+
+------------------------------
+
+swap above without the a3 to get:
+7/ (xx - 4) =
+7(xx+4) / [(xx-4)(xx+4)] =
+7(xx+4) / [23 - 16] =
+7(xx+4) / 7 =
+7(xx+4) / 7 ~= 7(4+4) / 7 ~= 7*8 / 7 = 8... so a4 = 8
+removing a4...
+7(xx+4) / 7 =
+(8*7)/7 + [(-8*7) + 7(xx+4)]/7 =
+8 + [(-56) + 7(xx+4)]/7 =
+8 + [-56 + 28 + 7(xx)]/7 =
+8 + [-28 + 7(xx)]/7 =
+8 + [7(xx - 4)]/7 =
+8 + (xx) -4... no more div here means we are done???
+
+------------------------------
+
+WITH  ...   n = 12...
+
+------------------------------
+
+swap first a0/guess to get nom/denom=1/3:  xx=sqrt(12)
+1 / (xx - 3) =
+(xx+3) / [(xx-3)(xx+3)] =
+(xx+3) / [12 - 9] =
+(xx+3) / 3 =
+(xx+3) / 3 ~= (3+3)/3 ~= 6/3 ~= 2... so a1 = 2
+removing a1
+(xx+3) / 3 =
+(2*3)/3 + [(-2*3) + (xx+3)]/3 =
+2 + [-6 + (xx+3)]/3 =
+2 + [(xx-3)]/3
+
+------------------------------
+
+swap above without the a1 to get:
+3 / (xx - 3) =
+3(xx+3) / [(xx-3)(xx+3)] =
+3(xx+3) / [12 - 9] =
+3(xx+3) / 3 =
+3(xx+3) / 3 ~= 3*(3+3) / 3 ~= 18/3 = 6.. so a2 = 6
+removing a2...
+3(xx+3) / 3 =
+(6*3)/3 + [(-6*3) + 3(xx+3)]/3 =
+6 + [(-18) + 9 + 3xx]/3 =
+6 + [-9 + 3xx]/3 =
+6 + [3(xx-3)]/3 =
+6 + (xx-3)
+
+------------------------------
+
+WITH  ...   n = 8...
+
+------------------------------
+
+swap first a0/guess to get nom/denom=1/2:  xx=sqrt(8)
+1 / (xx - 2) =
+(xx+2) / [(xx-2)(xx+2)] =
+(xx+2) / [8 - 4] =
+(xx+2) / 4 =
+(xx+2) / 4 ~= (2+2)/4 ~= 1... so a1 = 1
+removing a1
+(xx+2) / 4 =
+(1*4)/4 + [(-1*4) + (xx+2)]/4 =
+1 + [-4 + (xx+2)]/4 =
+1 + [(xx-2)]/4        // here the 2 and 4 can't be simplified to 1/2 obviously,
+but this needs some "special" attention in code?
+
+			tmp := n - sqr
+			nom = -((-a[i]*tmp) + (nom*denom)) // a[i]=1, tmp=4, nom=1 denom=2..2
+			denom = tmp=4... so NO simplify? why? the -2 part can't be touched
+
+------------------------------
+
+swap above without the a1 to get:
+4 / (xx-2) =
+4(xx+2) / [(xx-2)(xx+2)] =
+4(xx+2) / [8 - 4] =
+4(xx+2) / 4 =
+4(xx+2) / 4 ~= 4*(2+2) / 4 ~= 16/4 = 4.. so a2 = 4
+removing a2...
+4(xx+2) / 4 =
+(4*4)/4 + [(-4*4) + 4(xx+2)]/4 =
+4 + [(-16) + 8 + 4xx]/4 =
+4 + [-8 + 4xx]/4 =
+4 + [4(xx-2)]/4 =
+4 + (xx-2)
+
+			tmp := n - sqr
+			nom = -((-a[i]*tmp) + (nom*denom)) // a[i]=4, tmp=4, nom=4 denom=2..2
+			denom = tmp=4... so simplify? -2 part comes from? what? denom at start?
+
+------------------------------
+
+WITH  ...   n = 13...
+
+------------------------------
+
+swap first a0/guess to get nom/denom=1/3:  xx=sqrt(13)
+1 / (xx - 3) =
+(xx+3) / [(xx-3)(xx+3)] =
+(xx+3) / [13 - 9] =
+(xx+3) / 4 =
+(xx+3) / 4 ~= (3+3)/4 ~= 1... so a1 = 1
+removing a1
+(xx+3) / 4 =
+(1*4)/4 + [(-1*4) + (xx+3)]/4 =
+1 + [-1 + (xx)]/4 =
+1 + [(xx-1)]/4
+
+------------------------------
+
+swap above without the a1 to get:
+4 / (xx - 1) =
+4(xx+1) / [(xx-1)(xx+1)] =
+4(xx+1) / [13 - 1] =
+4(xx+1) / 12 =
+4(xx+1) / 12 ~= 4*(3+1) / 4 ~= 16/12 = 1.. so a2 = 1
+removing a2...
+4(xx+1) / 12 =
+(1*12)/12 + [(-1*12) + 4(xx+1)]/12 =
+1 + [(-12) + 4 + 4xx]/12 =
+1 + [-8 + 4xx]/12 =
+1 + [4(xx-2)]/12 =
+1 + (xx-2)/3
+
+------------------------------
+
+swap above without the a2 to get:
+3 / (xx - 2) =
+3(xx+2) / [(xx-2)(xx+2)] =
+3(xx+2) / [13 - 4] =
+3(xx+2) / 9 =
+3(xx+2) / 9 ~= 3*(3+2) / 9 ~= 15/9 = 1.. so a3 = 1
+removing a3...
+3(xx+2) / 9 =
+(1*9)/9 + [(-1*9) + 3(xx+2)]/9 =
+1 + [(-9) + 6 + 3xx]/9 =
+1 + [-3 + 3xx]/9 =  .. is it gcd of 3 numbers?
+1 + [3(xx-1)]/9 =
+1 + (xx-1)/3
+
+------------------------------
+
+swap above without the a3 to get:
+3 / (xx - 1) =
+3(xx+1) / [(xx-1)(xx+1)] =
+3(xx+1) / [13 - 1] =
+3(xx+1) / 12 =
+3(xx+1) / 12 ~= 3*(3+1) / 12 ~= 12/12 = 1.. so a4 = 1
+removing a4...
+3(xx+1) / 12 =
+(1*12)/12 + [(-1*12) + 3(xx+1)]/12 =
+1 + [(-12) + 3 + 3xx]/12 =
+1 + [-9 + 3xx]/9 =
+1 + [3(xx-3)]/9 =
+1 + (xx-3)/3
+
+------------------------------
+
+swap above without the a4 to get:
+3 / (xx - 3) =
+3(xx+3) / [(xx-3)(xx+3)] =
+3(xx+3) / [13 - 9] =
+3(xx+3) / 4 =
+3(xx+3) / 4 ~= 3*(3+3) / 4 ~= 18/4 = 4.. so a5 = 4
+removing a5...
+3(xx+3) / 4 =
+(4*4)/4 + [(-4*4) + 3(xx+3)]/4 =
+4 + [(-16) + 9 + 3xx]/4 =
+4 + [-7 + 3xx]/4 =
+4 + [3(xx-3)]/4 =
+4 + (xx-3)/3
+
+------------------------------
+
+WITH  ...   n = 14...
+
+------------------------------
+
+swap first a0/guess to get nom/denom=1/3:  xx=sqrt(14)
+1 / (xx - 3) =
+(xx+3) / [(xx-3)(xx+3)] =
+(xx+3) / [14 - 9] =
+(xx+3) / 5 =
+(xx+3) / 5 ~= (3+3)/5 ~= 1... so a1 = 1
+removing a1
+(xx+3) / 5 =
+(1*5)/5 + [(-1*5) + (xx+3)]/5 =
+1 + [-5+3 + (xx)]/5 =
+1 + [(xx-2)]/5
+
+------------------------------
+
+swap above without the a1 to get:
+5 / (xx - 2) =
+5(xx+2) / [(xx-2)(xx+2)] =
+5(xx+2) / [14 - 4] =
+5(xx+2) / 10 =
+5(xx+2) / 10 ~= 5(3+2)/10 ~= 2... so a2 = 2
+removing a2
+5(xx+2) / 10 =
+(2*10)/10 + [(-2*10) + 5(xx+2)]/10 =
+2 + [-20 + 10 + 5(xx)]/10 =
+2 + [5(xx-2)]/10 =
+2 + (xx-2)/2
+
+------------------------------
+
+swap above without the a2 to get:
+2 / (xx - 2) =
+2(xx+2) / [(xx-2)(xx+2)] =
+2(xx+2) / [14 - 4] =
+2(xx+2) / 10 =
+2(xx+2) / 10 ~= 2(3+2)/10 ~= 1... so a3 = 1
+removing a3
+2(xx+2) / 10 =
+(1*10)/10 + [(-1*10) + 2(xx+2)]/10 =
+1 + [-10 + 4 + 2(xx)]/10 =
+1 + [2(xx-3)]/10 =
+1 + (xx-3)/5
+
+------------------------------
+      
+
+If we continue we would get the following expansion:
+$\displaystyle \quad \quad \sqrt{23}=4+\frac 1 {1+\frac 1 {3+ \frac 1 {1+\frac 1 {8+ \dots}}}}$
+
+The process can be summarised as follows:
+
+- $\quad \quad a_0=4, \frac 1 {\sqrt{23}-4}=\frac {\sqrt{23}+4} 7=1+\frac {\sqrt{23}-3} 7$
+- $\quad \quad a_1=1, \frac 7 {\sqrt{23}-3}=\frac {7(\sqrt{23}+3)} {14}=3+\frac {\sqrt{23}-3} 2$
+- $\quad \quad a_2=3, \frac 2 {\sqrt{23}-3}=\frac {2(\sqrt{23}+3)} {14}=1+\frac {\sqrt{23}-4} 7$
+- $\quad \quad a_3=1, \frac 7 {\sqrt{23}-4}=\frac {7(\sqrt{23}+4)} 7=8+\sqrt{23}-4$
+- $\quad \quad a_4=8, \frac 1 {\sqrt{23}-4}=\frac {\sqrt{23}+4} 7=1+\frac {\sqrt{23}-3} 7$
+- $\quad \quad a_5=1, \frac 7 {\sqrt{23}-3}=\frac {7 (\sqrt{23}+3)} {14}=3+\frac {\sqrt{23}-3} 2$
+- $\quad \quad a_6=3, \frac 2 {\sqrt{23}-3}=\frac {2(\sqrt{23}+3)} {14}=1+\frac {\sqrt{23}-4} 7$
+- $\quad \quad a_7=1, \frac 7 {\sqrt{23}-4}=\frac {7(\sqrt{23}+4)} {7}=8+\sqrt{23}-4$
+
+It can be seen that the sequence is repeating. For conciseness, we use the
+notation $\sqrt{23}=[4;(1,3,1,8)]$, to indicate that the block (1,3,1,8) repeats
+indefinitely.
+
+
+The first ten continued fraction representations of (irrational) square roots are:
+$\quad \quad \sqrt{2}=[1;(2)]$, period=$1$
+$\quad \quad \sqrt{3}=[1;(1,2)]$, period=$2$
+$\quad \quad \sqrt{5}=[2;(4)]$, period=$1$
+$\quad \quad \sqrt{6}=[2;(2,4)]$, period=$2$
+$\quad \quad \sqrt{7}=[2;(1,1,1,4)]$, period=$4$
+$\quad \quad \sqrt{8}=[2;(1,4)]$, period=$2$
+$\quad \quad \sqrt{10}=[3;(6)]$, period=$1$
+$\quad \quad \sqrt{11}=[3;(3,6)]$, period=$2$
+$\quad \quad \sqrt{12}=[3;(2,6)]$, period=$2$
+$\quad \quad \sqrt{13}=[3;(1,1,1,1,6)]$, period=$5$
+
+Exactly four continued fractions, for $N \le 13$, have an odd period.
+How many continued fractions for $N \le 10\,000$ have an odd period?
+
+see prob 57.. it's similar
+
+#+begin_src odin :main no :comments link :tangle src/odd_period_square_roots.odin
+package odd_period_square_roots
+
+import "core:fmt"
+import "core:math"
+import "core:math/big"
+import "../util"
+
+get_sqrt_n_approx :: proc(n: int) -> (int, bool) {
+	// ex: 23 is between 16 and 25 (4^2 and 5^2)
+	MAXI :: 10_000
+	for i:=0; ; i+=1 {
+		if i == MAXI do return -1, false // error
+		tmp := int(math.pow_f64(f64(i), 2))
+		if tmp > n {
+			return i-1, false
+		} else if tmp == n {
+			return i, true // is perfect square
+		}
+	}
+}
+
+// continued fractional representation
+sqrt_n_cont_fractional :: proc(expansion_level: int, n: int, a: ^[dynamic]int) -> bool {
+	el := expansion_level
+	if el <= 0 do return false
+	clear(a)
+	sq, perfect := get_sqrt_n_approx(n)
+	append(a, sq) // set. a[0]
+	//fmt.printf("a[0] = %d\n", a[0])
+	if perfect do return true
+
+	nom : int = a[0] // expansion_level 0
+	denom : int = 1
+	for i in 1..=el {
+		nom, denom = denom, nom // swap
+
+		if i != el {
+			sqr := int(math.pow_f64(f64(denom), 2))
+			tmp := n - sqr
+			assert(tmp!=0)
+
+			tmp1 := nom * (a[0]+denom) / tmp // new a[x] calc
+			if (i > 1 && tmp1 == a[i-1] && nom == 1 && denom == a[0]) {
+				//fmt.println("2 or 5ish looking?")
+				return false // ummmm... 2 and 5 ish numbers? this feels hacky
+			}
+			append(a, tmp1)
+
+			prev_nom := nom
+			nom = -((-a[i]*tmp) + (nom*denom))
+			denom = tmp
+			gcd := math.gcd(nom, denom)
+			gcd = math.gcd(gcd, prev_nom)
+			
+			//fmt.printf("a[%d] = %d, %d %d %d\n", i, tmp1, nom, denom, gcd) // AHHHHHHHHH!
+			if gcd > 1 {
+				// when is it okay to reduce nom/denom? idk
+				nom /= gcd
+				denom /= gcd
+				//fmt.println("reduced", nom, denom, prev_nom, gcd)
+
+				if denom == 1 {
+					//fmt.println("denom is 1")
+					return false
+				}
+
+				sqr = int(math.pow_f64(f64(denom), 2))
+			}
+		}
+	}
+	return false
+}
+
+main :: proc() {
+	//{2}=[1;(2)]$, period=$1$
+	//{3}=[1;(1,2)]$, period=$2$
+	//{5}=[2;(4)]$, period=$1$
+	//{6}=[2;(2,4)]$, period=$2$
+	//{7}=[2;(1,1,1,4)]$, period=$4$
+	//{8}=[2;(1,4)]$, period=$2$
+	//{10}=[3;(6)]$, period=$1$
+	//{11}=[3;(3,6)]$, period=$2$
+	//{12}=[3;(2,6)]$, period=$2$
+	//{13}=[3;(1,1,1,1,6)]$, period=$5$
+	// see https://planetmath.org/tableofcontinuedfractionsofsqrtnfor1n102..
+	// to make more comparisions
+	
+	a : [dynamic]int
+	odd_periods := 0
+
+	for j in 2..=10_000 {
+		perfect := sqrt_n_cont_fractional(10000, j, &a)
+		//if !perfect {
+		//	fmt.printf("%d = [%d;(", j, a[0])
+		//	for i in 1..<len(a) {
+		//		if i == 1 {
+		//			fmt.printf("%d", a[i])
+		//		} else {
+		//			fmt.printf(",%d", a[i])
+		//		}
+		//	}
+		//	fmt.printf(")] period=%d\n", len(a)-1)
+		//}
+		if (len(a)-1) % 2 == 1 {
+			odd_periods += 1
+		}
+	}
+	fmt.println(odd_periods)
+}
+#+end_src
+
+
+
