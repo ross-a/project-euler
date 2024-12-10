@@ -249,7 +249,11 @@ player's hand is in no specific order, and in each hand there is a clear winner.
 
 How many hands does Player 1 win?
 
-#+begin_src text :tangle src/poker.txt
+#+begin_verse
+change below to begin_src/end_src to tangle poker.txt file
+this is here to hide below block in github
+#+end_verse
+#+begin_verse text :tangle src/poker.txt
 8C TS KC 9H 4S 7D 2S 5D 3S AC
 5C AD 5D AC 9C 7C 5H 8D TD KS
 3H 7H 6S KC JS QH TD JC 2D 8S
@@ -1250,7 +1254,7 @@ AD 3D TS KS 7H JH 2D JS QD AC
 9C JD 7C 6D TC 6H 6C JC 3D 3S
 QC KC 3S JC KD 2C 8D AH QS TS
 AS KD 3D JD 8H 7C 8C 5C QD 6C
-#+end_src
+#+end_verse
 
 #+begin_src odin :main no :comments link :tangle src/poker_hands.odin
 package poker_hands
@@ -3224,7 +3228,11 @@ take over twenty billion years to check them all. There is an efficient
 algorithm to solve it. ;o)
 
 ** triangle.txt
-#+begin_src text :tangle src/triangle.txt
+#+begin_verse
+change below to begin_src/end_src to tangle poker.txt file
+this is here to hide below block in github
+#+end_verse
+#+begin_verse text :tangle src/triangle.txt
 59
 73 41
 52 40 09
@@ -3325,5 +3333,5 @@ algorithm to solve it. ;o)
 64 66 84 24 18 16 27 48 20 14 47 69 30 86 48 40 23 16 61 21 51 50 26 47 35 33 91 28 78 64 43 68 04 79 51 08 19 60 52 95 06 68 46 86 35 97 27 58 04 65 30 58 99 12 12 75 91 39 50 31 42 64 70 04 46 07 98 73 98 93 37 89 77 91 64 71 64 65 66 21 78 62 81 74 42 20 83 70 73 95 78 45 92 27 34 53 71 15
 30 11 85 31 34 71 13 48 05 14 44 03 19 67 23 73 19 57 06 90 94 72 57 69 81 62 59 68 88 57 55 69 49 13 07 87 97 80 89 05 71 05 05 26 38 40 16 62 45 99 18 38 98 24 21 26 62 74 69 04 85 57 77 35 58 67 91 79 79 57 86 28 66 34 72 51 76 78 36 95 63 90 08 78 47 63 45 31 22 70 52 48 79 94 15 77 61 67 68
 23 33 44 81 80 92 93 75 94 88 23 61 39 76 22 03 28 94 32 06 49 65 41 34 18 23 08 47 62 60 03 63 33 13 80 52 31 54 73 43 70 26 16 69 57 87 83 31 03 93 70 81 47 95 77 44 29 68 39 51 56 59 63 07 25 70 07 77 43 53 64 03 94 42 95 39 18 01 66 21 16 97 20 50 90 16 70 10 95 69 29 06 25 61 41 26 15 59 63 35
-#+end_src
+#+end_verse
 ** code p67
