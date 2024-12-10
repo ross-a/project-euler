@@ -2928,47 +2928,47 @@ convergents for $\sqrt{2}$.
 | $1 + \dfrac{1}{2 + \dfrac{1}{2 + \dfrac{1}{2 + \dfrac{1}{2}}}} = \dfrac{41}{29}$ |
 
 Hence the sequence of the first ten convergents for $\sqrt{2}$ are:
-$1, \dfrac{3}{2}, \dfrac{7}{5}, \dfrac{17}{12}, \dfrac{41}{29}, \dfrac{99}{70},
-\dfrac{239}{169}, \dfrac{577}{408}, \dfrac{1393}{985}, \dfrac{3363}{2378}, ..._$
+$$1, \dfrac{3}{2}, \dfrac{7}{5}, \dfrac{17}{12}, \dfrac{41}{29}, \dfrac{99}{70},
+\dfrac{239}{169}, \dfrac{577}{408}, \dfrac{1393}{985}, \dfrac{3363}{2378}, ...$$
 
 What is most surprising is that the important mathematical constant,
 
 $e = [2;1, 2, 1, 1, 4, 1, 1, 6, 1, ... , 1, 2k, 1, ...]$.
 
 The first ten terms in the sequence of convergents for $e$ are:
-$2, 3, \dfrac{8}{3}, \dfrac{11}{4}, \dfrac{19}{7}, \dfrac{87}{32}, \dfrac{106}{39}, \dfrac{193}{71}, \dfrac{1264}{465}, \dfrac{1457}{536}, ..._$
+$$2, 3, \dfrac{8}{3}, \dfrac{11}{4}, \dfrac{19}{7}, \dfrac{87}{32}, \dfrac{106}{39}, \dfrac{193}{71}, \dfrac{1264}{465}, \dfrac{1457}{536}, ...$$
 
 numerator here           ^ ... or the 1457... last numerator
 how do you make convergents, giving a continued fraction?
 and/or
 is there a formula for the continued fraction of e?
 
-The sum of digits in the numerator of the $10^t^h$ convergent is
+The sum of digits in the numerator of the $10^{th}$ convergent is
 $1 + 4 + 5 + 7 = 17$.
 
-Find the sum of digits in the numerator of the $100^t^h$ convergent of the continued fraction for $e$.
+Find the sum of digits in the numerator of the $100^{th}$ convergent of the continued fraction for $e$.
 
-so $e^x = \dfrac{x^0}{0!} + \dfrac{x^1}{1!} + \dfrac{x^2}{2!}..._$
+so $$e^x = \dfrac{x^0}{0!} + \dfrac{x^1}{1!} + \dfrac{x^2}{2!}...$$
 or $e^x = 1 + \dfrac{x}{1 - \dfrac{1x}{2 + x - \dfrac{2x}{3 + x - \dfrac{3x}{4 + x
 -}}}}$
 because of Euler's continued fraction formula that connects a series to a
 continued fraction  (note: diagonal dots! (\ddots), i'm super fancy like that):
-$a_0 + a_0a_1 + a_0a_1a_2 + ... = \dfrac{a_0}{1 - \dfrac{a_1}{1 +
-\dfrac{a_2}{1 + \dfrac{a3}{1 + \ddots}}}$
+$$a_0 + a_0a_1 + a_0a_1a_2 + ... = \dfrac{a_0}{1 - \dfrac{a_1}{1 +
+\dfrac{a_2}{1 + \dfrac{a3}{1 + \ddots}}}}$$
 
 or super clean looking version, BUT is non-simple:
-$e = 2 + \dfrac{1}{1 + \dfrac{1}{2 + \dfrac{2}{3 + \dfrac{3}{\ddots}}}}$
+$$e = 2 + \dfrac{1}{1 + \dfrac{1}{2 + \dfrac{2}{3 + \dfrac{3}{\ddots}}}}$$
 
 for a regular continued fraction:
-$x = b_0 + \dfrac{1}{b_1 + \dfrac{1}{b_2 + \dfrac{1}{\ddots}}$
+$$x = b_0 + \dfrac{1}{b_1 + \dfrac{1}{b_2 + \dfrac{1}{\ddots}}}$$
 $x = [b_0;b_1,b_2,...]$
 
 
-$2, 3, \dfrac{8}{3}, \dfrac{11}{4}, \dfrac{19}{7}, \dfrac{87}{32}, \dfrac{106}{39}, \dfrac{193}{71}, \dfrac{1264}{465}, \dfrac{1457}{536}, ..._$
-$[2;1, 2, 1, 1, 4, 1, 1, 6, 1, ... , 1, 2k, 1, ...]$.
+$$2, 3, \dfrac{8}{3}, \dfrac{11}{4}, \dfrac{19}{7}, \dfrac{87}{32}, \dfrac{106}{39}, \dfrac{193}{71}, \dfrac{1264}{465}, \dfrac{1457}{536}, ...$$
+$$[2;1, 2, 1, 1, 4, 1, 1, 6, 1, ... , 1, 2k, 1, ...]$$.
 
 the convergent is given by the ratio of tridiagonal matrix determinants:
-$\dfrac{A_n}{B_n} = \dfrac{\begin{vmatrix}b_0&-1&0&...&0\\1&b_1&-1&...&0\\0&1&b_2&...&0\\0&0&1&...&-1\\0&0&0&...&b_n\end{vmatrix}}{\begin{vmatrix}b_1&-1&...&0\\1&b_2&...&0\\0&1&...&-1\\0&0&...&b_n\end{vmatrix}}$
+$$\dfrac{A_n}{B_n} = \dfrac{\begin{vmatrix}b_0&-1&0&...&0\\1&b_1&-1&...&0\\0&1&b_2&...&0\\0&0&1&...&-1\\0&0&0&...&b_n\end{vmatrix}}{\begin{vmatrix}b_1&-1&...&0\\1&b_2&...&0\\0&1&...&-1\\0&0&...&b_n\end{vmatrix}}$$
 
 also:
 $A_k = b_kA_{k-1 }+ A_{k-2}$
