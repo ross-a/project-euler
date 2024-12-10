@@ -3227,6 +3227,9 @@ If you could check one trillion (10^{12}) routes every second it would
 take over twenty billion years to check them all. There is an efficient
 algorithm to solve it. ;o)
 
+note2: not much changes from Problem 18, just loads triangle from file, instead
+of having it hard coded
+
 ** triangle.txt
 #+begin_verse
 change below to begin_src/end_src to tangle poker.txt file
@@ -3335,3 +3338,115 @@ this is here to hide below block in github
 23 33 44 81 80 92 93 75 94 88 23 61 39 76 22 03 28 94 32 06 49 65 41 34 18 23 08 47 62 60 03 63 33 13 80 52 31 54 73 43 70 26 16 69 57 87 83 31 03 93 70 81 47 95 77 44 29 68 39 51 56 59 63 07 25 70 07 77 43 53 64 03 94 42 95 39 18 01 66 21 16 97 20 50 90 16 70 10 95 69 29 06 25 61 41 26 15 59 63 35
 #+end_verse
 ** code p67
+#+begin_src odin :main no :comments link :tangle src/maximum_path_sum_ii.odin
+package maximum_path_sum_ii
+
+import "core:os"
+import "core:fmt"
+import "core:strconv"
+
+// actual triangle comes from file: triangle.txt
+triangle_ref : []int = {
+	75,
+	95, 64,
+	17, 47, 82,
+	18, 35, 87, 10,
+	20, 04, 82, 47, 65,
+	19, 01, 23, 75, 03, 34,
+	88, 02, 77, 73, 07, 63, 67,
+	99, 65, 04, 28, 06, 16, 70, 92,
+	41, 41, 26, 56, 83, 40, 80, 70, 33,
+	41, 48, 72, 33, 47, 32, 37, 16, 94, 29,
+	53, 71, 44, 65, 25, 43, 91, 52, 97, 51, 14,
+	70, 11, 33, 28, 77, 73, 17, 78, 39, 68, 17, 57,
+	91, 71, 52, 38, 17, 14, 91, 43, 58, 50, 27, 29, 48,
+	63, 66, 04, 68, 89, 53, 67, 30, 73, 16, 69, 87, 40, 31,
+	04, 62, 98, 27, 23, 09, 70, 98, 73, 93, 38, 53, 60, 04, 23, }
+
+connects_to :: proc(idx : int, triangle : []int) -> [2]int {
+	// every triangle node connects to the two below, find longest path down
+	ridx := 0
+	prev_ridx := 0
+	to_n1 := 0
+	to_n2 := 1
+	line := 1
+	for ; ridx <= idx; ridx+=1 {
+		if (ridx == prev_ridx+line) {
+			line += 1
+			prev_ridx = ridx
+		}
+
+		if ridx == idx {
+			to_n1 += line
+			to_n2 += line
+		} else {
+			to_n1 += 1
+			to_n2 += 1
+		}
+	}
+	if (to_n1 > len(triangle)-1 || to_n2 > len(triangle)-1) {
+		to_n1 = -1
+		to_n2 = -1
+	}
+
+	return {to_n1, to_n2}
+}
+
+Nodes :: struct {
+	n : int,
+	largest_sum  : int,
+	connect_prev : int,
+}
+
+main :: proc() {
+
+	tdata, err := os.read_entire_file("triangle.txt")
+	triangle : [dynamic]int
+	// every byte in tdata is a digit from a 2 digit number or a space or newline(0x0d 0x0a)
+	prev_digit : u8 = u8(0)
+	for c in tdata {
+		if c == 0x20 || c == 0x0d || c == 0x0a {
+			continue
+		}
+		if prev_digit != 0 {
+			str := fmt.tprintf("%c%c", prev_digit, c)
+			num,_ := strconv.parse_int(str)
+			append(&triangle, num)
+			prev_digit = 0
+		} else {
+			prev_digit = c
+		}
+	}
+
+	
+	tree := make([]Nodes, len(triangle))
+
+	for i:=0; i<len(triangle)-1; i+=1 {
+		tree[i] = ({ triangle[i], triangle[i], -1 })
+	}
+	for i:=0; i<len(triangle)-1; i+=1 {
+		tmp := connects_to(i, triangle[:])
+		if tmp[0] > 0 && tmp[1] > 0 {
+			if tree[tmp[0]].n + tree[i].largest_sum > tree[tmp[0]].largest_sum {
+				tree[tmp[0]].largest_sum = tree[tmp[0]].n + tree[i].largest_sum
+				tree[tmp[0]].connect_prev = i
+			}
+			if tree[tmp[1]].n + tree[i].largest_sum > tree[tmp[1]].largest_sum {
+				tree[tmp[1]].largest_sum = tree[tmp[1]].n + tree[i].largest_sum
+				tree[tmp[1]].connect_prev = i
+			}
+		}
+	}
+
+	// for all bottom nodes at the end -- note: 100 is height/width of triangle
+	largest := 0
+	size := len(tree)-1
+	for i:=0; i<100; i+=1 {
+		if tree[size-i].largest_sum > largest {
+			largest = tree[size-i].largest_sum
+		}
+	}
+	fmt.println(largest)
+	
+}
+#+end_src
