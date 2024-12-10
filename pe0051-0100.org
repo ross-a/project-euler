@@ -3205,12 +3205,12 @@ main :: proc() {
 By starting at the top of the triangle below and moving to adjacent numbers on
 the row below, the maximum total from top to bottom is 23.
 
-$$\begin{center}\fontdimen2\font=12pt\\
+$$\begin{matrix}\\
 {\color{red}{3}}\\
-{\color{red}{7}} 4\\
-2 {\color{red}{4}} 6\\
-8 5 {\color{red}{9}} 3\\
-\end{center}$$
+{\color{red}{7}} \qquad 4\\
+2 \qquad {\color{red}{4}} \qquad 6\\
+8 \qquad 5 \qquad {\color{red}{9}} \qquad 3\\
+\end{matrix}$$
 
 That is, 3 + 7 + 4 + 9 = 23.
 
