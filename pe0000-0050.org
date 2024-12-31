@@ -104,6 +104,7 @@ BUT gdb-msvc might be an option
 #+begin_src odin :main no :comments link :tangle util/util.odin
 package util
 
+
 import "core:fmt"
 import "core:math"
 import "core:strings"
@@ -144,9 +145,7 @@ is_palindrome :: proc(n : int) -> bool {
 get_combination_util :: proc(arr: []int, data: []int, start,end,idx,r: int, ret: ^[dynamic][]int) {
   if idx == r {
 	  data_cpy := make([]int, r)
-    for i,di in data {
-	    data_cpy[di] = i
-    }
+	  copy(data_cpy, data)
     append(ret, data_cpy)
     return
   }
@@ -190,11 +189,19 @@ permute :: proc(str : string, l,r : int, ret : ^[dynamic]string) {
   }
 }
 
-swap :: proc(s : string, i,j : int) {
+swap_string :: proc(s: string, i,j: int) {
   p1 := raw_data(s[i:])
   p2 := raw_data(s[j:])
   p1[0], p2[0] = s[j], s[i]
 }
+
+swap_array :: proc(s: $T/[]$E, i,j: int) {
+  p1 := raw_data(s[i:])
+  p2 := raw_data(s[j:])
+  p1[0], p2[0] = s[j], s[i]
+}
+
+swap :: proc{swap_string, swap_array}
 
 // n Choose r ... combinatorics
 nCr :: proc(n, r: int) -> int {
@@ -220,7 +227,148 @@ fmt.println("premutation")
 ret : [dynamic]string
 util.permute(strings.clone("hello"), 1,2, &ret)
 fmt.println(ret)
-,*/
+*/
+
+iterative_get_combinations :: proc(arr: []int, k: int, ret: ^[dynamic][]int) {
+	n := len(arr)
+	I := make([]int, k); defer delete(I) // for tracking iterative "position"
+	c := make([]int, k); defer delete(c) // current k arr elements
+	r : int = k
+	
+	for ; r <= k; {
+		if r == 0 {
+			cc := make([]int, k)
+			copy(cc, c)
+			append(ret, cc)
+
+			r += 1
+			continue
+		}
+
+		kr := k - r
+		if I[kr] < n-r+1 {
+			c[kr] = arr[I[kr]]
+
+			if r > 1 {
+				I[kr+1] = I[kr] + 1
+			}
+			
+			I[kr] += 1
+			r -= 1
+			
+		} else {
+			r += 1
+		}
+	}
+}
+
+Direction :: enum {
+	LEFT, // right to left
+	RIGHT,// left to right
+}
+
+MobileInt :: struct {
+	num: int,
+	dir: Direction,
+}
+
+gen_permute :: proc(arr: $T/[]$E , I: ^[]MobileInt) -> bool {
+	// Johnson and Trotter algorithm:
+	// 1. Find out the largest mobile integer in a particular sequence. A directed integer is said to be mobile if it is greater than its immediate neighbor in the direction it is looking at.
+	// 2. Switch this mobile integer and the adjacent integer to which its direction points.
+	// 3. Switch the direction of all the elements whose value is greater than the mobile integer value.
+	// 4. Repeat the step 1 until there is no mobile integer left in the sequence.
+	if len(arr) != len(I) {
+		delete(I^)
+		I^ = make([]MobileInt, len(arr))
+		for i in 0..<len(arr) {
+			I[i].num = i+1
+			I[i].dir = .LEFT
+		}
+	}
+
+	// for step 1
+	get_mobile :: proc(I: []MobileInt) -> (mobile: int, idx: int) {
+		mobile = 0
+		n := len(I)
+		for i in 0..<n {
+			if I[i].dir == .LEFT && i != 0 {
+				if I[i].num > I[i-1].num && I[i].num > mobile {
+					mobile = I[i].num
+					idx = i
+				}
+			}
+			else if I[i].dir == .RIGHT && i != n-1 {
+				if I[i].num > I[i+1].num && I[i].num > mobile {
+					mobile = I[i].num
+					idx = i
+				}
+			}
+		}
+		return
+	}
+	
+	mobile, idx := get_mobile(I^)
+
+	// swapping the elements according to the direction
+	if idx > 0 && I[idx].dir == .LEFT {
+		swap(arr, idx, idx-1)
+		I[idx], I[idx-1] = I[idx-1], I[idx]
+	} else if I[idx].dir == .RIGHT {
+		swap(arr, idx, idx+1)
+		I[idx], I[idx+1] = I[idx+1], I[idx]
+	} else {
+		// fmt.println("done? no swap", idx)
+		return false
+	}
+  
+	// changing the directions for elements 
+	// greater than largest mobile integer.
+	for i in 0..<len(I) {
+		if I[i].num > mobile {
+			if I[i].dir == .RIGHT {
+				I[i].dir = .LEFT
+			} else {
+				I[i].dir = .RIGHT
+			}
+		}
+	}
+	return true
+}
+	
+main :: proc() {
+	if false {
+		fmt.println("combination")
+		arr : []int = []int{1,2,3,4}
+		ret := new([dynamic][]int); defer free(ret)
+		iterative_get_combinations(arr, 2, ret)
+	
+		fmt.println(ret)
+		
+		for r in ret {
+			delete(r)
+		}
+	}
+	if true {
+		fmt.println("premutation") 
+		str2 := strings.clone("1234")
+		str := make([]u8, len(str2)); defer delete(str)
+		copy(str, str2)
+		delete(str2)
+		I := new([]MobileInt)
+		defer {
+			delete(I^)
+			free(I)
+		}
+		for i in 0..<60 {
+			fmt.println(string(str))
+			
+			if gen_permute(str, I) == false {
+				break
+			}
+		}
+	}
+}
 #+end_src
 
 * Prob 001 - Multiples of 3 and 5
