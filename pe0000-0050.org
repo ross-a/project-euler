@@ -104,7 +104,6 @@ BUT gdb-msvc might be an option
 #+begin_src odin :main no :comments link :tangle util/util.odin
 package util
 
-
 import "core:fmt"
 import "core:math"
 import "core:strings"
@@ -216,6 +215,40 @@ nCr :: proc(n, r: int) -> int {
     if ret < 0 do return -1 // return -1 if overflow
 	}
 	return ret;
+}
+
+Prime_Factor :: struct {
+  prime : int,
+  power : int,
+}
+
+// either increment (add 1 to power of a prime factor) or add this prime factor to the list
+inc_or_add :: proc(x: int, list: ^[dynamic]Prime_Factor) {
+  found := false
+  for &i in list {
+    if i.prime == x {
+      i.power += 1 // inc
+      found = true
+    }
+  }
+  if !found {
+    append(list, Prime_Factor{x, 1})
+  }
+}
+
+get_prime_factorization :: proc(x: int, list: ^[dynamic]Prime_Factor) {
+  n := x
+  tmp := x / 2
+  clear(list)
+  for i in 2..=tmp {     // put all prime factors into list
+    if is_prime(i) {
+      for; n % i == 0; { // this prime divides x
+        inc_or_add(i, list)
+        n = n / i        // correct here right? can it be: n / i - 1 ? is div slow?
+      }
+    }
+  }
+  return
 }
 
 /*
@@ -2942,46 +2975,12 @@ at first, so yeah! that sucked)
 import "core:fmt"
 import "../util"
 
-Prime_Factor :: struct {
-  prime : int,
-  power : int,
-}
-
-// either increment (add 1 to power of a prime factor) or add this prime factor to the list
-inc_or_add :: proc(x: int, list: ^[dynamic]Prime_Factor) {
-  found := false
-  for &i in list {
-    if i.prime == x {
-      i.power += 1 // inc
-      found = true
-    }
-  }
-  if !found {
-    append(list, Prime_Factor{x, 1})
-  }
-}
-
-get_prime_factorization :: proc(x: int, list: ^[dynamic]Prime_Factor) {
-  n := x
-  tmp := x / 2
-  clear(list)
-  for i in 2..=tmp {     // put all prime factors into list
-    if util.is_prime(i) {
-      for; n % i == 0; { // this prime divides x
-        inc_or_add(i, list)
-        n = n / i        // correct here right? can it be: n / i - 1 ? is div slow?
-      }
-    }
-  }
-  return
-}
-
 main :: proc() {
   C :: 4    // consecutive
   num := 11 // start search from here
-  list : [C][dynamic]Prime_Factor
+	list : [C][dynamic]Prime_Factor
   for i in 0..<C {
-    get_prime_factorization(num - i, &list[C-i-1])
+	  util.get_prime_factorization(num - i, &list[C-i-1])
   }
   found := false
   for {
@@ -2999,7 +2998,7 @@ main :: proc() {
       list[i] = list[i+1]
     }
     num += 1
-    get_prime_factorization(num, &list[C-1])
+    util.get_prime_factorization(num, &list[C-1])
     // fmt.println(num)... this takes SOOOO long to find you might want to include this to see how far you've come
   }
   tmp := ""
