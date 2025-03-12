@@ -4170,11 +4170,9 @@ main :: proc() {
 
 	lines: [dynamic]string
 	make_prime_factorizations(MAX, &lines)	
-	//tmp := get_prime_factorization(lines[1399]) // is wrong!
-	//fmt.println(tmp)
 	
 	if true {
-		for n in 2..<MAX { // AHHHHHHHHHHH
+		for n in 2..<MAX {
 			// get prime factorization of n
 			pf := get_prime_factorization(lines[n])
 			
@@ -4190,5 +4188,275 @@ main :: proc() {
 		}
 		fmt.println("n =", nn)
 	}
+}
+#+end_src
+
+* Prob 070 - Totient Permutation
+** prob p70
+Euler's totient function, $\phi(n)$ [sometimes called the phi function], is used to
+determine the number of positive numbers less than or equal to $n$ which are
+relatively prime to $n$. For example, as $1, 2, 4, 5, 7$, and $8$, are all less
+than nine and relatively prime to nine, $\phi(9)=6$.
+The number $1$ is considered to be relatively prime to every positive number, so
+$\phi(1)=1$.
+
+Interestingly, $\phi(87109)=79180$, and it can be seen that $87109$ is a
+permutation of $79180$.
+
+Find the value of $n$, 1 \lt n \lt 10^7, for which $\phi(n)$ is a permutation of $n$
+and the ratio $n/\phi(n)$ produces a minimum.
+
+** code p70
+#+begin_src odin :main no :comments link :tangle src/totient_permutation.odin
+package totient_permutation
+
+import "core:os"
+import "core:fmt"
+import "core:math"
+import "core:strconv"
+import "core:strings"
+import "../util"
+
+// Use sieve of eratosthenes sorta scheme to find/"fill" all prime factorizations:
+// idea is like start with 2 and "fill" all numbers that have 2 as it's prime factorization
+// then 3 will "fill" all numbers that have 3
+// 4 isn't prime so skip
+// but 5 will fill... and so on
+// everytime a number is "filled" we set the number there to be:  what is left
+// and count the number of times 2 was used to divide the number:  number / 2^x  (2 is whatever prime we are at)
+// this is sooooo much faster than finding the prime_factorization of each number one by one
+make_prime_factorizations2 :: proc(upto: int, lines: ^[dynamic]string) {
+	PFILE :: "prime_factorizations.txt" // making this file can take some time =(	
+	os.remove(PFILE)
+	file, err := os.open(PFILE, os.O_CREATE | os.O_RDWR); defer os.close(file)
+	if err != os.ERROR_NONE {
+		fmt.println("File Error")
+		return
+	}
+
+	// make lines
+	nums : [dynamic]int; defer delete(nums)
+	for i in 0..<upto {
+		append(lines, "")
+		append(&nums, i)
+	}
+	
+	// start the wheels
+	for n in 2..<upto {
+		if lines[n] == "" { // n is prime?
+			for k := n+n; k < upto; k += n {
+				r := 0
+				d := nums[k]
+				cnt := 0
+				for ; r == 0 && d != 1; {
+					r = d % n
+					d = d / n
+					if r == 0 { // n divides nums[k]
+						nums[k] = d
+						cnt += 1
+					}
+				}
+
+				if cnt > 0 {
+					was_blank : bool = (lines[k] == "")
+					lines[k] = fmt.tprintf("%s%s%d,%d", lines[k], was_blank ? "" : ",", n, cnt)
+				}
+			}
+		}
+	}
+
+	for l,idx in lines {
+		if idx != 0 {
+			os.write_string(file, fmt.tprintf("%s\n", l))
+		}
+	}
+	
+	os.flush(file)
+	return
+}
+
+get_prime_factorization :: proc(l: string) -> (pf: [dynamic]util.Prime_Factor) {
+	nums := strings.split(l, ",")
+	prime, power := 0, 0
+	for n, idx in nums {
+		if idx % 2 == 0 { // prime
+			prime,_ = strconv.parse_int(n)
+		} else {          // power
+			power,_ = strconv.parse_int(n)
+			append(&pf, util.Prime_Factor{prime, power})
+		}
+	}
+	return
+}
+
+// save a list of prime factorizations to files so that we don't have to remake them everytime
+make_prime_factorizations :: proc(upto: int, lines: ^[dynamic]string) {
+	PFILE :: "prime_factorizations.txt" // making this file can take some time =(
+	// contains lines that look like:  prime, power, prime, power, prime, power...
+	// ex for line/number 42: 2, 1, 3, 1, 7, 1
+	file, err := os.open(PFILE, os.O_RDWR); defer os.close(file)
+	if err != os.ERROR_NONE {
+		file, err = os.open(PFILE, os.O_CREATE | os.O_RDWR)
+		if err != os.ERROR_NONE {
+			fmt.println("File Error")
+			return
+		}
+	}
+	data, ok := os.read_entire_file(file)
+	tmplines := strings.split_lines(string(data))
+	append(lines, "") // pad for number/array_index zero
+	for l in tmplines {
+		append(lines, l)
+	}
+	if len(lines) < upto {
+		clear(lines)
+		make_prime_factorizations2(upto, lines)
+	}
+}
+
+phi :: proc(n: int, list: [dynamic]util.Prime_Factor) -> f64 {
+	// phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
+	ret : f64 = 1
+	if len(list) > 0 {
+		for l in list {
+			ret *= math.pow_f64(f64(l.prime), f64(l.power-1))
+			ret *= f64(l.prime-1)
+		}
+	} else {
+		ret = f64(n - 1)
+	}
+	return ret
+}
+
+// return true if some permutation of a == b
+is_permutation :: proc(#any_int a, b: int) -> bool {
+	bufa := make([]byte, 100); defer delete(bufa)
+	bufb := make([]byte, 100); defer delete(bufb)
+	saa := strconv.itoa(bufa, a)
+	sbb := strconv.itoa(bufb, b)
+	sa := len(saa)
+	sb := len(sbb)
+	if sa != sb {
+		return false
+	}
+
+	str := make([]u8, sa); defer delete(str)
+	copy(str, saa)
+	I := new([]util.MobileInt)
+	defer {
+		delete(I^)
+		free(I)
+	}
+	
+	for ;; {
+		if string(str) == sbb {
+			return true
+		}
+		if util.gen_permute(str, I) == false {
+			break
+		}
+	}
+	return false
+}
+
+main :: proc() {
+	MAX :: 10_000_000
+	nn := 0
+
+	lines: [dynamic]string
+	make_prime_factorizations(MAX, &lines)	
+
+	// to find minimal n/phi(n)
+	minimal := f64(MAX)
+
+	if true {
+		for n in 2..<MAX {
+			// get prime factorization of n
+			pf := get_prime_factorization(lines[n])
+			_ = pf
+			
+			// totient phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
+			my_phi := phi(n, pf)
+			n_phi := f64(n) / my_phi
+      
+			if (n_phi < minimal) && is_permutation(n, my_phi) {
+				nn = n
+				minimal = n_phi
+			}
+		}
+ 		fmt.println("n =", nn, minimal)
+	}
+}
+#+end_src
+* Prob 071 - Ordered Fractions
+** prob p71
+Consider the fraction, $\dfrac n d$, where $n$ and $d$ are positive integers. If
+$n < d$ and $\operatorname{HCF}(n,d)=1$, it is called a reduced proper fraction.
+
+If we list the set of reduced proper fractions for $d \le 8$ in ascending order of
+size, we get:
+
+$$\frac 1 8, \frac 1 7, \frac 1 6, \frac 1 5, \frac 1 4, \frac 2 7, \frac 1 3,
+\frac 3 8, \mathbf{\frac 2 5}, \frac 3 7, \frac 1 2, \frac 4 7, \frac 3 5, \frac
+5 8, \frac 2 3, \frac 5 7, \frac 3 4, \frac 4 5, \frac 5 6, \frac 6 7, \frac 7
+8$$
+
+It can be seen that $\dfrac 2 5$ is the fraction immediately
+to the left of $\dfrac 3 7$.
+
+By listing the set of reduced proper fractions for $d \le 1\,000\,000$ in
+ascending order of size, find the numerator of the fraction immediately to the
+left of $\dfrac 3 7$.
+
+
+
+
+  8,7,6,5,4,7,3,8,5,7 <-- first half denoms
+- 7,6,5,4,3,5,2,5,3,4 <-- backwards last half numerators
+= 1,1,1,1,1,2,1,3,2,3 <-- first half numerators
+so, at most, only half the list need be "calculated" (up to 1/2)
+but,
+numbers like: 2/7 and 2/5 and 3/7
+need to have their "place"/"order" found
+
+actually, not adding to a list and only *checking* limited fractions in
+a range that keeps updating is *WAY* faster than sorting a list
+
+** code p71
+#+begin_src odin :main no :comments link :tangle src/ordered_fractions.odin
+package ordered_fractions
+
+import "core:fmt"
+import "core:math"
+import "core:slice"
+
+Fracs :: struct {
+	n : int,
+	d : int,
+}
+
+less :: proc(a, b: Fracs) -> bool {
+	return (a.n * b.d) < (b.n * a.d)
+}
+
+main :: proc() {
+	fracs : [dynamic]Fracs
+
+	MAX := 1_000_000
+	c := Fracs{2,5}
+
+	// want to *check* the set of fractions that is greater than 2/5, but less than 3/7
+	// so if the denom is 7, only *check* noms from 2*7/5= 2.xx  TO  3
+	for denom in 3..=MAX {
+		for i in c.n*denom/c.d..=3*denom/7 {
+			if math.gcd(i,denom) == 1 {
+				tmp := Fracs{i,denom}
+				if less(tmp, Fracs{3,7}) && !less(tmp, c) {
+					c = tmp
+				}
+			}
+		}
+	}
+	fmt.println(c)
 }
 #+end_src
