@@ -4460,3 +4460,81 @@ main :: proc() {
 	fmt.println(c)
 }
 #+end_src
+
+* Prob 072 - Counting Fractions
+** prob p72
+Consider the fraction, $\dfrac n d$, where n and d are positive integers. If
+n \lt d and $\operatorname{HCF}(n,d)=1$, it is called a reduced proper fraction.
+
+If we list the set of reduced proper fractions for $d \le 8$ in ascending order of size, we get:
+
+$$\frac 1 8, \frac 1 7, \frac 1 6, \frac 1 5, \frac 1 4, \frac 2 7, \frac 1 3,
+\frac 3 8, \frac 2 5, \frac 3 7, \frac 1 2, \frac 4 7, \frac 3 5, \frac 5 8,
+\frac 2 3, \frac 5 7, \frac 3 4, \frac 4 5, \frac 5 6, \frac 6 7, \frac 7 8$$
+
+It can be seen that there are $21$ elements in this set.
+
+How many elements would be contained in the set of reduced proper fractions for
+d \le 1,000,000?
+
+** code p72
+#+begin_src odin :main no :comments link :tangle src/counting_fractions.odin
+package counting_fractions
+
+import "core:fmt"
+import "core:math"
+import "../util"
+
+phi :: proc(n: int, list: [dynamic]util.Prime_Factor) -> f64 {
+	// phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
+	ret : f64 = 1
+	if len(list) > 0 {
+		for l in list {
+			ret *= math.pow_f64(f64(l.prime), f64(l.power-1))
+			ret *= f64(l.prime-1)
+		}
+	} else {
+		ret = f64(n - 1)
+	}
+	return ret
+}
+
+main :: proc() {
+	//MAX := 8
+	MAX := 1_000_000
+
+	lines: [dynamic]string
+	util.make_prime_factorizations(MAX, &lines)
+	
+	cnt : f64 = 0
+	for n in 2..=MAX {
+		pf := util.get_prime_factorization(lines[n])
+		cnt += phi(n, pf)
+	}
+	fmt.println(MAX, "=", i64(cnt))
+}
+#+end_src
+
+* Prob 073 - Counting Fractions in a Range
+** prob p73
+Consider the fraction, $\dfrac n d$, where $n$ and $d$ are positive integers. If
+$n \lt d$ and $\operatorname{HCF}(n, d)=1$, it is called a reduced proper
+fraction.
+
+If we list the set of reduced proper fractions for $d \le 8$ in ascending order of size, we get:
+$$\frac 1 8, \frac 1 7, \frac 1 6, \frac 1 5, \frac 1 4, \frac 2 7, \frac 1 3,
+\mathbf{\frac 3 8, \frac 2 5, \frac 3 7}, \frac 1 2, \frac 4 7, \frac 3 5, \frac
+5 8, \frac 2 3, \frac 5 7, \frac 3 4, \frac 4 5, \frac 5 6, \frac 6 7, \frac 7
+8$$
+
+It can be seen that there are $3$ fractions between $\dfrac 1 3$ and $\dfrac 1
+2$.
+
+How many fractions lie between $\dfrac 1 3$ and $\dfrac 1 2$ in the sorted set
+of reduced proper fractions for $d \le 12\,000$?
+
+** code p73
+#+begin_src odin :main no :comments link :tangle src/counting_fractions_in_range.odin
+
+#+end_src
+
