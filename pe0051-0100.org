@@ -4052,20 +4052,6 @@ import "core:strconv"
 import "core:strings"
 import "../util"
 
-phi :: proc(n: int, list: [dynamic]util.Prime_Factor) -> f64 {
-	// phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
-	ret : f64 = 1
-	if len(list) > 0 {
-		for l in list {
-			ret *= math.pow_f64(f64(l.prime), f64(l.power-1))
-			ret *= f64(l.prime-1)
-		}
-	} else {
-		ret = f64(n - 1)
-	}
-	return ret
-}
-
 main :: proc() {
 	MAX :: 1_000_000
 	nn := 0
@@ -4080,7 +4066,7 @@ main :: proc() {
 			pf := get_prime_factorization(lines[n])
 			
 			// totient phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
-			my_phi := phi(n, pf)
+			my_phi := util.phi(n, pf)
 			n_phi := f64(n) / my_phi
 			if n_phi > largest {
 				nn = n
@@ -4119,20 +4105,6 @@ import "core:math"
 import "core:strconv"
 import "core:strings"
 import "../util"
-
-phi :: proc(n: int, list: [dynamic]util.Prime_Factor) -> f64 {
-	// phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
-	ret : f64 = 1
-	if len(list) > 0 {
-		for l in list {
-			ret *= math.pow_f64(f64(l.prime), f64(l.power-1))
-			ret *= f64(l.prime-1)
-		}
-	} else {
-		ret = f64(n - 1)
-	}
-	return ret
-}
 
 // return true if some permutation of a == b
 is_permutation :: proc(#any_int a, b: int) -> bool {
@@ -4182,7 +4154,7 @@ main :: proc() {
 			_ = pf
 			
 			// totient phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
-			my_phi := phi(n, pf)
+			my_phi := util.phi(n, pf)
 			n_phi := f64(n) / my_phi
       
 			if (n_phi < minimal) && is_permutation(n, my_phi) {
@@ -4190,7 +4162,7 @@ main :: proc() {
 				minimal = n_phi
 			}
 		}
- 		fmt.println("n =", nn, minimal)
+		fmt.println("n =", nn, minimal)
 	}
 }
 #+end_src
@@ -4291,20 +4263,6 @@ import "core:fmt"
 import "core:math"
 import "../util"
 
-phi :: proc(n: int, list: [dynamic]util.Prime_Factor) -> f64 {
-	// phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
-	ret : f64 = 1
-	if len(list) > 0 {
-		for l in list {
-			ret *= math.pow_f64(f64(l.prime), f64(l.power-1))
-			ret *= f64(l.prime-1)
-		}
-	} else {
-		ret = f64(n - 1)
-	}
-	return ret
-}
-
 main :: proc() {
 	//MAX := 8
 	MAX := 1_000_000
@@ -4315,7 +4273,7 @@ main :: proc() {
 	cnt : f64 = 0
 	for n in 2..=MAX {
 		pf := util.get_prime_factorization(lines[n])
-		cnt += phi(n, pf)
+		cnt += util.phi(n, pf)
 	}
 	fmt.println(MAX, "=", i64(cnt))
 }
@@ -4341,6 +4299,42 @@ of reduced proper fractions for $d \le 12\,000$?
 
 ** code p73
 #+begin_src odin :main no :comments link :tangle src/counting_fractions_in_range.odin
+package counting_fractions_in_range
 
+import "core:fmt"
+import "core:math"
+import "core:slice"
+
+Fracs :: struct {
+	n : int,
+	d : int,
+}
+
+less :: proc(a, b: Fracs) -> bool {
+	return (a.n * b.d) < (b.n * a.d)
+}
+
+main :: proc() {
+	fracs : [dynamic]Fracs
+
+	MAX := 12_000
+	c := Fracs{1,3}
+	cnt := 0
+
+	for denom in 4..=MAX { // start at 4, so that 1/3 doesn't get added
+		//fmt.println("at", denom)
+		for i in c.n*denom/c.d..=1*denom/2 {
+			if math.gcd(i,denom) == 1 {
+				//fmt.println("considering", i, "/", denom)
+				tmp := Fracs{i,denom}
+				if less(tmp, Fracs{1,2}) && !less(tmp, c) {
+					//fmt.println("adding", i, "/", denom)
+					cnt += 1
+				}
+			}
+		}
+	}
+	fmt.println(cnt)
+}
 #+end_src
 
