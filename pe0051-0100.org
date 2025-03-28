@@ -4052,103 +4052,6 @@ import "core:strconv"
 import "core:strings"
 import "../util"
 
-// Use sieve of eratosthenes sorta scheme to find/"fill" all prime factorizations:
-// idea is like start with 2 and "fill" all numbers that have 2 as it's prime factorization
-// then 3 will "fill" all numbers that have 3
-// 4 isn't prime so skip
-// but 5 will fill... and so on
-// everytime a number is "filled" we set the number there to be:  what is left
-// and count the number of times 2 was used to divide the number:  number / 2^x  (2 is whatever prime we are at)
-// this is sooooo much faster than finding the prime_factorization of each number one by one
-make_prime_factorizations2 :: proc(upto: int, lines: ^[dynamic]string) {
-	PFILE :: "prime_factorizations.txt" // making this file can take some time =(	
-	os.remove(PFILE)
-	file, err := os.open(PFILE, os.O_CREATE | os.O_RDWR); defer os.close(file)
-	if err != os.ERROR_NONE {
-		fmt.println("File Error")
-		return
-	}
-
-	// make lines
-	nums : [dynamic]int; defer delete(nums)
-	for i in 0..<upto {
-		append(lines, "")
-		append(&nums, i)
-	}
-	
-	// start the wheels
-	for n in 2..<upto {
-		if lines[n] == "" { // n is prime?
-			for k := n+n; k < upto; k += n {
-				r := 0
-				d := nums[k]
-				cnt := 0
-				for ; r == 0 && d != 1; {
-					r = d % n
-					d = d / n
-					if r == 0 { // n divides nums[k]
-						nums[k] = d
-						cnt += 1
-					}
-				}
-
-				if cnt > 0 {
-					was_blank : bool = (lines[k] == "")
-					lines[k] = fmt.tprintf("%s%s%d,%d", lines[k], was_blank ? "" : ",", n, cnt)
-				}
-			}
-		}
-	}
-
-	for l,idx in lines {
-		if idx != 0 {
-			os.write_string(file, fmt.tprintf("%s\n", l))
-		}
-	}
-	
-	os.flush(file)
-	return
-}
-
-get_prime_factorization :: proc(l: string) -> (pf: [dynamic]util.Prime_Factor) {
-	nums := strings.split(l, ",")
-	prime, power := 0, 0
-	for n, idx in nums {
-		if idx % 2 == 0 { // prime
-			prime,_ = strconv.parse_int(n)
-		} else {          // power
-			power,_ = strconv.parse_int(n)
-			append(&pf, util.Prime_Factor{prime, power})
-		}
-	}
-	return
-}
-
-// save a list of prime factorizations to files so that we don't have to remake them everytime
-make_prime_factorizations :: proc(upto: int, lines: ^[dynamic]string) {
-	PFILE :: "prime_factorizations.txt" // making this file can take some time =(
-	// contains lines that look like:  prime, power, prime, power, prime, power...
-	// ex for line/number 42: 2, 1, 3, 1, 7, 1
-	file, err := os.open(PFILE, os.O_RDWR); defer os.close(file)
-	if err != os.ERROR_NONE {
-		file, err = os.open(PFILE, os.O_CREATE | os.O_RDWR)
-		if err != os.ERROR_NONE {
-			fmt.println("File Error")
-			return
-		}
-	}
-	data, ok := os.read_entire_file(file)
-	tmplines := strings.split_lines(string(data))
-	append(lines, "") // pad for number/array_index zero
-	for l in tmplines {
-		append(lines, l)
-	}
-	if len(lines) < upto {
-		clear(lines)
-		make_prime_factorizations2(upto, lines)
-	}
-}
-
 phi :: proc(n: int, list: [dynamic]util.Prime_Factor) -> f64 {
 	// phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
 	ret : f64 = 1
@@ -4217,103 +4120,6 @@ import "core:strconv"
 import "core:strings"
 import "../util"
 
-// Use sieve of eratosthenes sorta scheme to find/"fill" all prime factorizations:
-// idea is like start with 2 and "fill" all numbers that have 2 as it's prime factorization
-// then 3 will "fill" all numbers that have 3
-// 4 isn't prime so skip
-// but 5 will fill... and so on
-// everytime a number is "filled" we set the number there to be:  what is left
-// and count the number of times 2 was used to divide the number:  number / 2^x  (2 is whatever prime we are at)
-// this is sooooo much faster than finding the prime_factorization of each number one by one
-make_prime_factorizations2 :: proc(upto: int, lines: ^[dynamic]string) {
-	PFILE :: "prime_factorizations.txt" // making this file can take some time =(	
-	os.remove(PFILE)
-	file, err := os.open(PFILE, os.O_CREATE | os.O_RDWR); defer os.close(file)
-	if err != os.ERROR_NONE {
-		fmt.println("File Error")
-		return
-	}
-
-	// make lines
-	nums : [dynamic]int; defer delete(nums)
-	for i in 0..<upto {
-		append(lines, "")
-		append(&nums, i)
-	}
-	
-	// start the wheels
-	for n in 2..<upto {
-		if lines[n] == "" { // n is prime?
-			for k := n+n; k < upto; k += n {
-				r := 0
-				d := nums[k]
-				cnt := 0
-				for ; r == 0 && d != 1; {
-					r = d % n
-					d = d / n
-					if r == 0 { // n divides nums[k]
-						nums[k] = d
-						cnt += 1
-					}
-				}
-
-				if cnt > 0 {
-					was_blank : bool = (lines[k] == "")
-					lines[k] = fmt.tprintf("%s%s%d,%d", lines[k], was_blank ? "" : ",", n, cnt)
-				}
-			}
-		}
-	}
-
-	for l,idx in lines {
-		if idx != 0 {
-			os.write_string(file, fmt.tprintf("%s\n", l))
-		}
-	}
-	
-	os.flush(file)
-	return
-}
-
-get_prime_factorization :: proc(l: string) -> (pf: [dynamic]util.Prime_Factor) {
-	nums := strings.split(l, ",")
-	prime, power := 0, 0
-	for n, idx in nums {
-		if idx % 2 == 0 { // prime
-			prime,_ = strconv.parse_int(n)
-		} else {          // power
-			power,_ = strconv.parse_int(n)
-			append(&pf, util.Prime_Factor{prime, power})
-		}
-	}
-	return
-}
-
-// save a list of prime factorizations to files so that we don't have to remake them everytime
-make_prime_factorizations :: proc(upto: int, lines: ^[dynamic]string) {
-	PFILE :: "prime_factorizations.txt" // making this file can take some time =(
-	// contains lines that look like:  prime, power, prime, power, prime, power...
-	// ex for line/number 42: 2, 1, 3, 1, 7, 1
-	file, err := os.open(PFILE, os.O_RDWR); defer os.close(file)
-	if err != os.ERROR_NONE {
-		file, err = os.open(PFILE, os.O_CREATE | os.O_RDWR)
-		if err != os.ERROR_NONE {
-			fmt.println("File Error")
-			return
-		}
-	}
-	data, ok := os.read_entire_file(file)
-	tmplines := strings.split_lines(string(data))
-	append(lines, "") // pad for number/array_index zero
-	for l in tmplines {
-		append(lines, l)
-	}
-	if len(lines) < upto {
-		clear(lines)
-		make_prime_factorizations2(upto, lines)
-	}
-}
-
 phi :: proc(n: int, list: [dynamic]util.Prime_Factor) -> f64 {
 	// phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
 	ret : f64 = 1
@@ -4364,7 +4170,7 @@ main :: proc() {
 	nn := 0
 
 	lines: [dynamic]string
-	make_prime_factorizations(MAX, &lines)	
+	util.make_prime_factorizations(MAX, &lines)	
 
 	// to find minimal n/phi(n)
 	minimal := f64(MAX)
@@ -4372,7 +4178,7 @@ main :: proc() {
 	if true {
 		for n in 2..<MAX {
 			// get prime factorization of n
-			pf := get_prime_factorization(lines[n])
+			pf := util.get_prime_factorization(lines[n])
 			_ = pf
 			
 			// totient phi(n) = p^k-1(p-1) * next_p^next_k-1(next_p-1) ...
@@ -4391,7 +4197,7 @@ main :: proc() {
 * Prob 071 - Ordered Fractions
 ** prob p71
 Consider the fraction, $\dfrac n d$, where $n$ and $d$ are positive integers. If
-$n < d$ and $\operatorname{HCF}(n,d)=1$, it is called a reduced proper fraction.
+$n < d$ and $HCF(n,d)=1$, it is called a reduced proper fraction.
 
 If we list the set of reduced proper fractions for $d \le 8$ in ascending order of
 size, we get:
@@ -4464,7 +4270,7 @@ main :: proc() {
 * Prob 072 - Counting Fractions
 ** prob p72
 Consider the fraction, $\dfrac n d$, where n and d are positive integers. If
-n \lt d and $\operatorname{HCF}(n,d)=1$, it is called a reduced proper fraction.
+n \lt d and $HCF(n,d)=1$, it is called a reduced proper fraction.
 
 If we list the set of reduced proper fractions for $d \le 8$ in ascending order of size, we get:
 
@@ -4518,7 +4324,7 @@ main :: proc() {
 * Prob 073 - Counting Fractions in a Range
 ** prob p73
 Consider the fraction, $\dfrac n d$, where $n$ and $d$ are positive integers. If
-$n \lt d$ and $\operatorname{HCF}(n, d)=1$, it is called a reduced proper
+$n \lt d$ and $HCF(n, d)=1$, it is called a reduced proper
 fraction.
 
 If we list the set of reduced proper fractions for $d \le 8$ in ascending order of size, we get:
