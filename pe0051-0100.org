@@ -4426,3 +4426,79 @@ main :: proc() {
 	fmt.println(cnt)
 }
 #+end_src
+* Prob 075 - Singular Integer Right Triangles
+** prob p75
+It turns out that $\pu{12 cm}$ is the smallest length of wire that can be bent
+to form an integer sided right angle triangle in exactly one way, but there are
+many more examples.
+
+- $\pu{\mathbf{12} \mathbf{cm}}$: $(3,4,5)$
+- $\pu{\mathbf{24} \mathbf{cm}}$: $(6,8,10)$
+- $\pu{\mathbf{30} \mathbf{cm}}$: $(5,12,13)$
+- $\pu{\mathbf{36} \mathbf{cm}}$: $(9,12,15)$
+- $\pu{\mathbf{40} \mathbf{cm}}$: $(8,15,17)$
+- $\pu{\mathbf{48} \mathbf{cm}}$: $(12,16,20)$
+
+In contrast, some lengths of wire, like $\pu{20 cm}$, cannot be bent to form an
+integer sided right angle triangle, and other lengths allow more than one
+solution to be found; for example, using $\pu{120 cm}$ it is possible to form
+exactly three different integer sided right angle triangles.
+
+- $\pu{\mathbf{120} \mathbf{cm}}$: $(30,40,50)$, $(20,48,52)$, $(24,45,51)$
+
+Given that $L$ is the length of the wire, for how many values of $L \le
+1\,500\,000$ can exactly one integer sided right angle triangle be formed?
+
+** code p75
+#+begin_src odin :main no :comments link :tangle src/singular_integer_right_triangles.odin
+package singular_integer_right_triangles
+
+import "core:fmt"
+import "core:math"
+
+is_primative_tri :: proc(a, b, c: int) -> bool {
+	tmp := math.gcd(math.gcd(a, b), c)
+	return tmp == 1
+}
+
+main :: proc() {
+	c := 0
+	has_exactly_one := 0
+	L :: 1_500_000
+	//L :: 48
+	cnts := make([]u8, L+1); defer delete(cnts)
+
+	// a = m^2 - n^2
+	// b = 2mn
+	// c = m^2 + n^2
+	// a+b+c = 2m(m+n) <= L
+	// 2mn <= L/2m^2
+	// n <= 2mL/2m^2 <= L/2m ... best to just reference the wiki @ https://en.wikipedia.org/wiki/Pythagorean_triple
+	for m in 2..=int(math.sqrt(f64(L/2))) {
+		for n in 1..<m {
+			if math.gcd(m, n) == 1 && (m%2 != n%2) {
+				a := m*m - n*n
+				b := 2*m*n
+				c := m*m + n*n
+				abc := a+b+c
+				if abc <= L {
+					//fmt.println("adding", a, b, c)
+					cnts[abc] += 1
+					if cnts[abc] >= 1 {
+						for k := 2; abc*k <= L; k += 1 {
+							cnts[abc*k] += 1
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	for i in cnts {
+		if i == 1 {
+			has_exactly_one += 1
+		}
+	}
+	fmt.println(has_exactly_one)
+}
+#+end_src
