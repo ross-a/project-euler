@@ -4338,3 +4338,91 @@ main :: proc() {
 }
 #+end_src
 
+* Prob 074 - Digit Factorial Chains
+** prob p74
+The number $145$ is well known for the property that the sum of the factorial of
+its digits is equal to $145$: $$1! + 4! + 5! = 1 + 24 + 120 = 145.$$
+
+Perhaps less well known is $169$, in that it produces the longest chain of
+numbers that link back to $169$; it turns out that there are only three such
+loops that exist:
+
+\begin{align}
+169 \to 363601 \to 1454 \to 169\\
+872 \to 45362 \to 872
+\end{align}
+
+It is not difficult to prove that EVERY starting number will eventually get
+stuck in a loop. For example,
+
+\begin{align}
+69 \to 363600 \to 1454 \to 169 \to 363601 (\to 1454)\\
+78 \to 45360 \to 871 \to 45361 (\to 871)\\
+540 \to 145 (\to 145)
+\end{align}
+
+Starting with $69$ produces a chain of five non-repeating terms, but the longest
+non-repeating chain with a starting number below one million is sixty terms.
+
+How many chains, with a starting number below one million, contain exactly sixty
+non-repeating terms?
+
+** code p74
+#+begin_src odin :main no :comments link :tangle src/digit_factorial_chains.odin
+package digit_factorial_chains
+
+import "core:fmt"
+import "core:math"
+import "core:strconv"
+
+make_new_n :: proc(n: int) -> int {
+	@static buf : []u8
+	if buf == nil {
+		buf = make([]u8, 100)
+	}
+	
+	// make new n by adding factorial of digits
+	new_n : int = 0
+	n_str := strconv.itoa(buf, n)
+	for i in 0..<len(n_str) {
+		tmp := math.factorial(strconv._digit_value(rune(n_str[i])))
+		new_n += tmp
+	}
+	return new_n
+}
+
+main :: proc() {
+	MAX := 999999
+	chain : [dynamic]int
+	in_chain :: proc(n: int, chain: [dynamic]int) -> bool {
+		for i in chain {
+			if n == i {
+				return true
+			}
+		}
+		return false
+	}
+
+	cnt := 0
+	for nn in 1..=MAX {
+		n := nn
+		clear(&chain)
+		append(&chain, n)
+		for ;; {
+			new_n := make_new_n(n)
+			if !in_chain(new_n, chain) {
+				append(&chain, new_n)
+				n = new_n
+			} else {
+				break
+			}
+		}
+
+		if len(chain) == 60 {
+			cnt += 1
+			fmt.println(len(chain), chain)
+		}
+	}
+	fmt.println(cnt)
+}
+#+end_src
