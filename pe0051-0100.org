@@ -4555,3 +4555,91 @@ main :: proc() {
 	fmt.println(count_partitions(NUM, NUM)-1)
 }
 #+end_src
+* Prob 077 - Prime Summations
+** prob p77
+It is possible to write ten as the sum of primes in exactly five different ways:
+
+$$\begin{aligned}
+&7 + 3 \\\\
+&5 + 5 \\\\
+&5 + 3 + 2 \\\\
+&3 + 3 + 2 + 2 \\\\
+&2 + 2 + 2 + 2 + 2
+\end{aligned}$$
+
+What is the first value which can be written as the sum of primes in over five thousand different ways?
+
+** code p77
+#+begin_src odin :main no :comments link :tangle src/prime_summations.odin
+package prime_summations
+
+import "core:fmt"
+import "core:strings"
+import "core:strconv"
+import "../util"
+
+prime_sums :: proc() {
+	make_add_string :: proc(num: int, s: string) -> string {
+		// make a string, putting num at proper place into new "adding string"
+		tmp := strings.split(s, "+"); defer delete(tmp)
+		builder := strings.builder_make()
+
+		writ := false
+		for n,i in tmp {
+			nn,_ := strconv.parse_int(n)
+			end  := (i==len(tmp)-1) ? "" : "+"
+			if !writ && num >= nn {
+				strings.write_string(&builder, fmt.tprintf("%d+%s%s", num, n, end))
+				writ = true
+			} else {
+				strings.write_string(&builder, fmt.tprintf("%s%s", n, end))
+			}
+		}
+		if !writ {
+			strings.write_string(&builder, fmt.tprintf("+%d", num))
+		}
+		return strings.to_string(builder)
+	}
+  contains :: proc(list: ^[dynamic]string, str: string) -> bool {
+		for s in list {
+			if str == s {
+				return true
+			}
+		}
+		return false
+	}
+	
+	diff_ways := 5000 // find first value that can be written in this many different ways
+	ways : map[int](^[dynamic]string)
+	for i:=4; ; i+=1 {
+		ways[i] = new([dynamic]string)
+		if i == 4 {
+			append(ways[i], "2+2")
+		} else if i == 5 {
+			append(ways[i], "3+2")
+		} else {
+			for tmp:=i-2; tmp>=(i/2); tmp-=1 {
+				if util.is_prime(tmp) && util.is_prime(i-tmp) { // add new found prime pairs
+					append(ways[i], fmt.tprintf("%v+%v", tmp, i-tmp))
+				}
+				if tmp >= 4 && util.is_prime(i-tmp) {
+					for s in ways[tmp] {
+						ss := make_add_string(i-tmp, s)
+						if !contains(ways[i], ss) {
+							append(ways[i], ss)
+						}
+					}
+				}
+			}
+		}
+		if len(ways[i]) >= diff_ways {
+			fmt.println("FOUND @", i)
+			break
+		}
+	}
+}
+
+main :: proc() {
+	prime_sums()
+}
+#+end_src
