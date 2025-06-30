@@ -4643,3 +4643,132 @@ main :: proc() {
 	prime_sums()
 }
 #+end_src
+* Prob 078 - Coin Partitions
+** prob p78
+Let $p(n)$ represent the number of different ways in which $n$ coins can be
+separated into piles. For example, five coins can be separated into piles in
+exactly seven different ways, so $p(5)=7$.
+
+$$\begin{aligned}
+&OOOOO~~~ \\
+&OOOO~~~O \\
+&OOO~~~OO \\
+&OOO~~~O~~~O \\
+&OO~~~OO~~~O \\
+&OO~~~O~~~O~~~O \\
+&O~~~O~~~O~~~O~~~O
+\end{aligned}$$
+
+Find the least value of $n$ for which $p(n)$ is divisible by one million.
+
+Euler's Pentagonal number theorem?:
+Relation with partitions
+The identity implies a recurrence for calculating
+
+$$p(n) = p(n-1) + p(n-2) - p(n-5) - p(n-7)...$$
+
+or more formally,
+
+
+$$ p(n)=\sum _{k\neq 0}(-1)^{k-1}p(n-g_{k}) $$
+
+$$ gk = k(3k - 1)/2 ~~ for ~~ k = 1, -1, 2, -2, 3, ... $$
+
+also, $$g_k = g_k_-_1 + 3k-2 ~~~ for ~~~ k = 1,2,3,...$$
+
+** code p78
+#+begin_src odin :main no :comments link :tangle src/coin_partitions.odin
+package coin_partitions
+
+import "core:fmt"
+import "core:math/big"
+
+gen_pentagonal_number :: proc(n: int, gn1, gn2: int) -> (pos: int, neg: int) {
+	pos = (gn1<<1) - gn2 + 3
+	//neg = ((pos * 2) + 2*n)/2 // note: here all magic number 2's so we can shift
+	neg = ((pos<<1) + (n<<1)) >> 1
+	return
+}
+
+gen_pentagonal_number_list :: proc(size: int) -> []int {
+	@static gplist : [dynamic]int
+	if len(gplist) == 0 { // some setup
+		append(&gplist, 1)
+		append(&gplist, 2)
+		append(&gplist, 5)
+		append(&gplist, 7)
+	}
+	assert(len(gplist) % 2 == 0)
+	if len(gplist) < size { // make list big 'enuf
+		nth := len(gplist)
+		for ; nth < size; nth+=2 {
+			i := nth/2
+			gn1 := gplist[nth-2]
+			gn2 := gplist[nth-4]
+			p, n := gen_pentagonal_number(i+1, gn1, gn2)
+
+			append(&gplist, p)
+			append(&gplist, n)
+		}
+	}
+	return gplist[:]
+}
+
+coin_partitions :: proc() {
+	// partitions:   p(n) = p(n-1) + p(n-2) - p(n-5) - p(n-7) + ...
+	// the numbers above are from general pentagonal numbers with anything p(-X) being 0
+	WITH_BIG_INT :: true
+  MIL :: 1_000_000
+	MAX :: 100_000
+	int2 :: struct {
+		i : int,
+		big_i : big.Int,
+	}
+	p := make([]int2, MAX); defer delete(p)
+	p[0].i = 1 // 1 way to stack 0 coins
+	big.set(&p[0].big_i, 1)
+	p[1].i = 1 // 1 way to stack 1 coin
+	big.set(&p[1].big_i, 1)
+
+	for n in 2..<MAX {
+		for gk, idx in gen_pentagonal_number_list(MAX-1) {
+			if (n-gk) < 0 {
+				break
+			}
+
+			tmp := p[n-gk].i
+			tmp_big : big.Int
+			when WITH_BIG_INT {
+				big.set(&tmp_big, &p[n-gk].big_i)
+			}
+
+			if (idx/2) % 2 == 0 {
+				p[n].i += tmp
+				when WITH_BIG_INT {
+					big.add(&p[n].big_i, &p[n].big_i, &tmp_big)
+				}
+			} else {
+				p[n].i -= tmp
+				when WITH_BIG_INT {
+					big.sub(&p[n].big_i, &p[n].big_i, &tmp_big)
+				}
+			}
+		}
+
+		p[n].i %= MIL
+		if p[n].i == 0 {
+			fmt.printf("FOUND %v\n", n)
+			when WITH_BIG_INT {
+				// this is a pretty big number here, turn off to speed things up
+				num_str, err := big.itoa(&p[n].big_i)
+				fmt.printf("%v\n", num_str)
+			}
+			break
+		}
+	}
+}
+
+main :: proc() {
+	coin_partitions()
+}
+#+end_src
