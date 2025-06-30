@@ -4670,7 +4670,7 @@ $$p(n) = p(n-1) + p(n-2) - p(n-5) - p(n-7)...$$
 or more formally,
 
 
-$$p(n)=\sum_{k\neq0}(-1)^{k-1}p(n-g_{k})$$
+$$p(n)=\Sigma_{k\neq0}(-1)^{k-1}p(n-g_{k})$$
 
 $$gk = k(3k - 1)/2 ~ for ~ k = 1, -1, 2, -2, 3, ...$$
 
