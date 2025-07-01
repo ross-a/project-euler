@@ -4669,17 +4669,13 @@ $$p(n) = p(n-1) + p(n-2) - p(n-5) - p(n-7)...$$
 
 or more formally,
 
-$$p(n)=\sum_{k\neq0 }^{~ }(-1)^{k-1 }p(n-g_{k })$$
-$$with, g_k = k(3k - 1)/2 ~ for ~ k = 1, -1, 2, -2, 3, ...$$
-$$also, g_k = g_{k-1 } + 3k-2 ~ for ~ k = 1,2,3,...$$
-$$AND!, g_k = 2g_{k-1 } - g_{k-2 } + 3 ~ for ~ k = 1,2,3,...$$
+$$p(n)=\sum_{k\neq0 }(-1)^{k-1 }p(n-g_{k })$$
+
+with, $$g_k = k(3k - 1)/2 ~ for ~ k = 1, -1, 2, -2, 3, ...$$
+also, $$g_k = g_{k-1 } + 3k-2 ~ for ~ k = 1,2,3,...$$
+AND!, $$g_k = 2g_{k-1 } - g_{k-2 } + 3 ~ for ~ k = 1,2,3,...$$
 
 note: last two recursive g_k forms won't work with negative k's
-
-NOTE2: use https://www.mathjax.org/#demo
-to test out latex in this org file
-
-and maybe M-x org-toggle-pretty-entities
 
 ** code p78
 #+begin_src odin :main no :comments link :tangle src/coin_partitions.odin
@@ -4764,7 +4760,7 @@ coin_partitions :: proc() {
 		if p[n].i == 0 {
 			fmt.printf("FOUND %v\n", n)
 			when WITH_BIG_INT {
-				// this is a pretty big number here, turn off to speed things up
+				// this is a pretty big number here, "turn off" WITH_BIG_INT to speed things up
 				num_str, err := big.itoa(&p[n].big_i)
 				fmt.printf("%v\n", num_str)
 			}
@@ -4775,5 +4771,135 @@ coin_partitions :: proc() {
 
 main :: proc() {
 	coin_partitions()
+}
+#+end_src
+* Prob 079 - Passcode Derivation
+** prob p79
+A common security method used for online banking is to ask the user for three
+random characters from a passcode. For example, if the passcode was 531278, they
+may ask for the 2nd, 3rd, and 5th characters; the expected reply would be: 317.
+
+The text file, keylog.txt,
+contains fifty successful login attempts.
+
+Given that the three characters are always asked for in order, analyse the file
+so as to determine the shortest possible secret passcode of unknown length.
+
+** code p79
+#+begin_src text :tangle src/keylog.txt
+319
+680
+180
+690
+129
+620
+762
+689
+762
+318
+368
+710
+720
+710
+629
+168
+160
+689
+716
+731
+736
+729
+316
+729
+729
+710
+769
+290
+719
+680
+318
+389
+162
+289
+162
+718
+729
+319
+790
+680
+890
+362
+319
+760
+316
+729
+380
+319
+728
+716
+#+end_src
+#+begin_src odin :main no :comments link :tangle src/passcode_derivation.odin
+package passcode_derivation
+
+import "core:os"
+import "core:fmt"
+import "core:strings"
+
+contains :: proc(list: ^[dynamic]u8, r: u8) -> bool {
+	for i in list {
+		if i == r {
+			return true
+		}
+	}
+	return false
+}
+
+main :: proc() {
+	data, ok := os.read_entire_file("keylog.txt")
+	symbols : [dynamic]u8
+	lines : []string
+	if ok {
+		lines = strings.split(string(data), "\n")
+		for l,idx in lines { // get all symbols
+			for i in 0..<len(l) {
+				if l[i] != 13 && l[i] != 10 { // no newlines or returns
+					if !contains(&symbols, u8(l[i])) {
+						append(&symbols, u8(l[i]))
+					}
+				}
+			}
+		}
+	}
+
+	order :: proc(l: string, symbols: ^[dynamic]u8) {
+		// look for l[x] then l[y] and if the index of l[x] isn't < that of l[y]'s return false
+		assert(len(l)>2)
+		x := u8(l[0])
+		for i in 1..<len(l) {
+			if strings.is_space(rune(l[i])) {
+				break
+			}
+			y := u8(l[i])
+			xx := strings.index(string(symbols[:]), fmt.tprintf("%c", x))
+			yy := strings.index(string(symbols[:]), fmt.tprintf("%c", y))
+			if xx > yy {
+				// move xx to be before yy
+				tmp := symbols[yy]
+				assign_at(symbols, yy, symbols[xx])
+				ordered_remove(symbols, xx)
+				inject_at(symbols, yy+1, tmp)
+			}
+			x = y
+		}
+	}
+	
+	if ok {
+		for l,idx in lines { // re-order symbols
+			if len(l)>2 {
+				order(l, &symbols) // note: duplicate symbols in the actual passcode would derp this out
+			}
+		}
+		fmt.println(string(symbols[:]))
+	}
 }
 #+end_src
