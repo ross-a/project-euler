@@ -4669,12 +4669,15 @@ $$p(n) = p(n-1) + p(n-2) - p(n-5) - p(n-7)...$$
 
 or more formally,
 
+$$ p(n)=\sum_{k\neq0}^{~}(-1)^{k-1}p(n-g_{k}) $$
 
-$$p(n)=\Sigma_{k\neq0}(-1)^{k-1}p(n-g_{k})$$
+with, $$g_k = k(3k - 1)/2 ~ for ~ k = 1, -1, 2, -2, 3, ...$$
+also, $$g_k = g_{k-1} + 3k-2 ~ for ~ k = 1,2,3,...$$
+AND!, $$g_k = 2g_{k-1} - g_{k-2} + 3 ~ for ~ k = 1,2,3,...$$
+note: last two recursive g_k forms won't work with negative k's
 
-$$gk = k(3k - 1)/2 ~ for ~ k = 1, -1, 2, -2, 3, ...$$
-
-also, $$g_k = g_k_-_1 + 3k-2 ~ for ~ k = 1,2,3,...$$
+NOTE2: use https://www.mathjax.org/#demo
+to test out latex in this org file
 
 ** code p78
 #+begin_src odin :main no :comments link :tangle src/coin_partitions.odin
