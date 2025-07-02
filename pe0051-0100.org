@@ -4903,3 +4903,60 @@ main :: proc() {
 	}
 }
 #+end_src
+* Prob 080 - Square Root Digital Expansion
+** prob p80
+It is well known that if the square root of a natural number is not an integer,
+then it is irrational. The decimal expansion of such square roots is infinite
+without any repeating pattern at all.
+
+The square root of two is $1.41421356237309504880\cdots$, and the digital sum of
+the first one hundred decimal digits is $475$.
+
+For the first one hundred natural numbers, find the total of the digital sums of
+the first one hundred decimal digits for all the irrational square roots.
+
+** code p80
+#+begin_src odin :main no :comments link :tangle src/square_root_digital_expansion.odin
+package square_root_digital_expansion
+
+import "core:fmt"
+import "core:math"
+import "core:math/big"
+import "core:strconv"
+
+sum_digits :: proc(s: string) -> int {
+	// sum of digits in a string s
+	cnt := 0
+	for i in s {
+		cnt += strconv._digit_value(i)
+	}
+	return cnt
+}
+
+main :: proc() {
+	// some setup
+	bigbig : big.Int
+	big.set(&bigbig, 10)
+	big.exp(&bigbig, &bigbig, 99) // (10^100)
+	big.exp(&bigbig, &bigbig, 2) // (10^100)^2... for 100 decimal places
+
+	acc := 0
+	for i in 2..=100 {
+		ii : big.Int
+		big.set(&ii, i) // set to 2
+		big.mul(&ii, &ii, &bigbig) // give 2 100 "places"
+	
+		iisqrt : big.Int
+		big.sqrt(&iisqrt, &ii)
+		sqrt_str, err2 := big.itoa(&iisqrt)
+		
+		tmp := sum_digits(sqrt_str)
+		irr : bool = tmp > 9
+		//fmt.println(sqrt_str, tmp, irr)
+		if irr {
+			acc += tmp
+		}
+	}
+	fmt.println(acc)
+}
+#+end_src
