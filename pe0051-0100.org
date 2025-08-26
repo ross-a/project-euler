@@ -4970,8 +4970,7 @@ red and is equal to $2427$.
 
 $$\begin{pmatrix}
 \color{red}{131} & 673 & 234 & 103 & 18 \\
-\color{red}{201} & \color{red}{96} & \color{red}{342} & 965 &
-150 \\
+\color{red}{201} & \color{red}{96} & \color{red}{342} & 965 & 150 \\
 630 & 803 & \color{red}{746} & \color{red}{422} & 111 \\
 537 & 699 & 497 & \color{red}{121} & 956 \\
 805 & 732 & 524 & \color{red}{37} & \color{red}{331}
@@ -5225,5 +5224,271 @@ main :: proc() {
 
 	//fmt.println("path", path)
 	fmt.println(cost_so_far[MY*MX-1] + f32(M[0][0])) // no cost to "get" to first cell so add it in
+}
+#+end_src
+* Prob 082 - Path Sum: Three Ways
+** prob p82
+NOTE: This problem is a more challenging version of Problem 81.
+
+The minimal path sum in the $5$ by $5$ matrix below, by starting in any cell in
+the left column and finishing in any cell in the right column, and only moving
+up, down, and right, is indicated in red and bold; the sum is equal to $994$.
+
+$$\begin{pmatrix}
+131 & 673 & \color{red}{234} & \color{red}{103} & \color{red}{18} \\
+\color{red}{201} & \color{red}{96} & \color{red}{342} & 965 & 150 \\
+630 & 803 & 746 & 422 & 111 \\
+537 & 699 & 497 & 121 & 956 \\
+805 & 732 & 524 & 37 & 331
+\end{pmatrix}$$
+
+** code p82
+#+begin_src odin :main no :comments link :tangle src/path_sum_three_ways.odin
+package path_sum_three_ways
+
+import "core:os"
+import "core:fmt"
+import "core:math"
+import "core:strings"
+import "core:strconv"
+import "nubs:astar"
+
+when false {
+	MX :: 5
+	MY :: 5
+} else {
+	MX :: 80
+	MY :: 80
+}	
+
+load_matrix :: proc(M: ^[80][80]int, file: string) {
+	// assumes file is 80x80
+	// each line is comma sep'd values equal to a row
+	data, success := os.read_entire_file_from_filename(file)
+	idx := 0
+	if success {
+		lines, err := strings.split(string(data), "\n")
+		//fmt.println(len(lines))
+		if err == .None {
+			for l in lines {
+				vals, err2 := strings.split(l, ",")
+				//fmt.println(len(vals))
+				if err2 == .None && len(vals) == 80 {
+					for v in vals {
+						x := idx % 80
+						y := idx / 80
+						M[y][x],_ = strconv.parse_int(v)
+						idx += 1
+					}
+				}
+			}
+		}
+	}
+}
+
+Cell :: struct {
+  x: int,
+  y: int,
+  key: int,
+}
+
+Grid :: struct {
+  dim: [2]int,
+  graph : astar.Graph(Cell),
+	
+  start: ^Cell,
+  end: ^Cell,
+}
+
+cell_get_node_index :: proc(n: Cell, r: rawptr) -> int {
+  return astar.get_node_index(n, r)
+}
+cell_key :: proc(n: Cell) -> f32 {
+  return astar.key(n)
+}
+my_heuristic :: proc(a, b: Cell) -> f32 {
+	sta := MX*MY
+	end := sta+1
+	if (a.x == sta || b.x == sta) {
+		if a.x == 0 || b.x == 0 {
+			return 1
+		} else {
+			return 9999
+		}
+	}
+	if (a.x == end || b.x == end) {
+		if a.x == MX-1 || b.x == MX-1 {
+			return 1
+		} else {
+			return 9999
+		}
+		return 1
+	}
+  return math.sqrt_f32(math.pow(f32(a.x - b.x), 2) + math.pow(f32(a.y - b.y), 2))
+}
+cell_less :: proc(a,b: Cell) -> bool {
+  return astar.less(a,b)
+}
+
+reconstruct_path :: proc(grid: ^Grid, came_from: []int, cost_so_far: map[int]f32) -> (path: [dynamic][2]int) {
+  current := grid.end^
+    for i := 0; !(current.x == grid.start.x && current.y == grid.start.y); i += 1 {
+      append(&path, [2]int{current.x, current.y})
+			if current.x == 0 { // we can be done here, got back to first column
+				break
+			}
+      curr := current.y * grid.dim.x + current.x
+      current.x = came_from[curr] % grid.dim.x
+      current.y = came_from[curr] / grid.dim.x
+    }
+  //append(&path, [2]int{grid.start.x, grid.start.y})
+  return
+}
+
+my_edges :: proc(node_idx: int, data: rawptr, clean: bool = false) -> (ret: []int) {
+	// note: this my_edges() only goes right and up/down
+	// note2: node_idx = w*h does fake start... connects/edges up to all nodes in first column
+	grid_wh := transmute(^[2]int)data
+  w := grid_wh[0]
+  h := grid_wh[1]
+	if node_idx == w*h { // fake start
+		ret = make([]int, h)
+		for i in 0..<h {
+			ret[i] = i*w+ 0
+		}
+		return ret
+	}
+	if node_idx > w*h { // fake end ret nothing
+		return ret
+	}
+	
+  x := node_idx % w
+  y := node_idx / w
+  horizontal :: proc(x, w: int) -> (int, bool) {
+    if x >= 0 && x < w {
+      return x, true
+    }
+    return 0, false
+  }
+  vertical :: proc(y, h: int) -> (int, bool) {
+    if y >= 0 && y < h {
+      return y, true
+    }
+    return 0, false
+  }
+
+	tret : [dynamic]int
+	xy, oks := horizontal(x+1, w)
+	if oks {
+		append(&tret, y*w + xy)
+	}
+	xy, oks = vertical(y+1, h)
+	if oks {
+		append(&tret, xy*w + x)
+	}
+	xy, oks = vertical(y-1, h)
+	if oks {
+		append(&tret, xy*w + x)
+	}
+	if x == w-1 { // fake last column connects to end
+		append(&tret, w*h+1)
+	}
+
+  return tret[:]
+}
+
+show_path :: proc(path: [dynamic][2]int, grid: ^Grid, cost_so_far: map[int]f32) {
+	contains :: proc(path: [dynamic][2]int, x: int, y: int) -> bool {
+		for p in path {
+			if p.x == x && p.y == y {
+				return true
+			}
+		}
+		return false
+	}
+	W := grid.dim.x
+	for y in 0..<grid.dim.y {
+		for x in 0..<grid.dim.x {
+			if contains(path, x, y) {
+				//fmt.printf("\033[%vm%03v\033[0m,", 31, grid.graph.nodes[y*W+x].key)
+				fmt.printf("\033[%vm%v\033[0m", 31, ".")
+			} else {
+				//fmt.printf("%03v,", grid.graph.nodes[y*W+x].key)
+				fmt.printf(".")
+			}
+		}
+		fmt.printf("\n")
+	}
+	//fmt.println("costs:")
+	//for y in 0..<grid.dim.y {
+	//	for x in 0..<grid.dim.x {
+	//		fmt.printf("%03v,", cost_so_far[y*W+x])
+	//	}
+	//	fmt.printf("\n")
+	//}
+}
+
+main :: proc() {
+	// this version only goes up or down or right
+	when MX == 5 {
+		M := [MY][MX]int{
+			{131, 673, 234, 103, 18},
+			{201, 96,  342, 965, 150},
+			{630, 803, 746, 422, 111},
+			{537, 699, 497, 121, 956},
+			{805, 732, 524, 37,  331}}
+	} else {
+		MX :: 80
+		MY :: 80
+		M : [MY][MX]int
+		load_matrix(&M, "matrix.txt")
+	}
+
+	came_from : []int
+  cost_so_far : map[int]f32
+  path : [dynamic][2]int
+
+	// move "matrix" to "grid"
+	grid : Grid
+	grid.dim.x = MX
+	grid.dim.y = MY
+	tmp_cells := make([]Cell, grid.dim.x * grid.dim.y + 2 /*for fakes*/)
+	for x in 0..<MX {
+		for y in 0..<MY {
+			idx := y*MX + x
+			tmp_cells[idx].x = x
+			tmp_cells[idx].y = y
+			tmp_cells[idx].key = M[y][x]
+		}
+	}
+	grid.graph.nodes = tmp_cells
+	grid.start = new(Cell) // fake grid cell to connect to starting column
+	grid.start.x = MX*MY
+	grid.start.y = 0
+	grid.start.key = 0
+	grid.end = new(Cell) // fake grid cell to connect to ending column
+	grid.end.x = MX*MY+1
+	grid.end.y = 0
+	grid.end.key = 0
+	// both start and end *NEED* to be in .nodes ... for fakes
+	grid.graph.nodes[grid.start.x] = grid.start^
+	grid.graph.nodes[grid.end.x] = grid.end^
+	grid.graph.data = transmute(rawptr)&[2]int{int(grid.dim.x), int(grid.dim.y)}
+	grid.graph.edges = my_edges
+	grid.graph.get_node_index = cell_get_node_index
+	grid.graph.heuristic = my_heuristic
+	grid.graph.key = cell_key
+	grid.graph.less = cell_less
+	// ------------------------------
+
+	came_from, cost_so_far = astar.search(grid.start^, grid.end^, grid.graph)
+  path = reconstruct_path(&grid, came_from, cost_so_far)
+
+	acc := 0
+	for p in path {
+		acc += grid.graph.nodes[p.y*grid.dim.x+p.x].key
+	}
+	fmt.println("path cost", acc)
+	//show_path(path, &grid, cost_so_far)
 }
 #+end_src
