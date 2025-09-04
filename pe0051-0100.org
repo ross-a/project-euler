@@ -5700,3 +5700,436 @@ main :: proc() {
 	//show_path(path, &grid, cost_so_far)
 }
 #+end_src
+* Prob 084 - Monopoly Odds
+** prob p84
+In the game, *Monopoly*, the standard board is set up in the
+following way:
+
+[[file:src/0084_monopoly_board.png]]
+
+A player starts on the GO square and adds the scores on two 6-sided dice to
+determine the number of squares they advance in a clockwise direction. Without
+any further rules we would expect to visit each square with equal probability:
+2.5%. However, landing on G2J (Go To Jail), CC (community chest), and CH
+(chance) changes this distribution.
+
+In addition to G2J, and one card from each of CC and CH, that orders the player
+to go directly to jail, if a player rolls three consecutive doubles, they do not
+advance the result of their 3rd roll. Instead they proceed directly to jail.
+
+At the beginning of the game, the CC and CH cards are shuffled. When a player
+lands on CC or CH they take a card from the top of the respective pile and,
+after following the instructions, it is returned to the bottom of the pile.
+There are sixteen cards in each pile, but for the purpose of this problem we are
+only concerned with cards that order a movement; any instruction not concerned
+with movement will be ignored and the player will remain on the CC/CH square.
+
+
+Community Chest (2/16 cards):
+- Advance to GO
+- Go to JAIL
+Chance (10/16 cards):
+- Advance to GO
+- Go to JAIL
+- Go to C1
+- Go to E3
+- Go to H2
+- Go to R1
+- Go to next R (railway company)
+- Go to next R
+- Go to next U (utility company)
+- Go back 3 squares.
+
+The heart of this problem concerns the likelihood of visiting a particular
+square. That is, the probability of finishing at that square after a roll. For
+this reason it should be clear that, with the exception of G2J for which the
+probability of finishing on it is zero, the CH squares will have the lowest
+probabilities, as 5/8 request a movement to another square, and it is the final
+square that the player finishes at on each roll that we are interested in. We
+shall make no distinction between "Just Visiting" and being sent to JAIL, and we
+shall also ignore the rule about requiring a double to "get out of jail",
+assuming that they pay to get out on their next turn.
+
+By starting at GO and numbering the squares sequentially from 00 to 39 we can
+concatenate these two-digit numbers to produce strings that correspond with sets
+of squares.
+
+Statistically it can be shown that the three most popular squares, in order, are
+JAIL (6.24%) = Square 10, E3 (3.18%) = Square 24, and GO (3.09%) = Square 00. So
+these three most popular squares can be listed with the six-digit modal
+string: 102400.
+
+If, instead of using two 6-sided dice, two 4-sided dice are used, find the
+six-digit modal string.
+
+** code p84
+#+begin_src odin :main no :comments link :tangle src/monopoly_odds.odin
+package monopoly_odds
+
+import "core:fmt"
+import "core:mem"
+import "core:math"
+import "core:math/rand"
+import "core:strings"
+import "core:reflect"
+import "vendor:raylib"
+
+UINT64_MAX :: 1<<64-1
+MENU_RECT :: raylib.Rectangle{250, 10, 240, 390}
+
+MonopolyBoard :: enum {
+	GO   = 00,
+	
+	A1   = 01,
+	CC1  = 02,
+	A2   = 03,
+	T1   = 04,
+	R1   = 05,
+	B1   = 06,
+	CH1  = 07,
+	B2   = 08,
+	B3   = 09,
+	JAIL = 10,
+
+	C1   = 11,
+	U1,
+	C2,
+	C3,
+	R2,
+	D1,
+	CC2,
+	D2,
+	D3,
+	FP,
+
+	E1,
+	CH2,
+	E2,
+	E3,
+	R3,
+	F1,
+	F2,
+	U2,
+	F3,
+	G2J,
+
+	G1,
+	G2,
+	CC3,
+	G3,
+	R4,
+	CH3,
+	H1,
+	T2,
+	H2,
+}
+CommunityChest :: enum {
+	AdvToGo = 0,
+	GoToJail = 1,
+	A = 2,
+	B = 3,
+	C = 4,
+	D = 5,
+	E = 6,
+	F = 7,
+	G = 8,
+	H = 9,
+	I = 10,
+	J = 11,
+	K = 12,
+	L = 13,
+	M = 14,
+	N = 15,
+}
+Chance :: enum {
+	AdvToGo = 0,
+	GoToJail = 1,
+  GoToC1 = 2,
+	GoToE3 = 3,
+	GoToH2 = 4,
+	GoToR1 = 5,
+	GoToNextRail1 = 6,
+	GoToNextRail2 = 7,
+	GoToNextUtil = 8,
+	GoBack3Squares = 9,
+	A = 10,
+	B = 11,
+	C = 12,
+	D = 13,
+	E = 14,
+	F = 15,
+}
+
+Values :: struct {
+	show_menu   : bool,
+	width       : int,
+	height      : int,
+	board_texture : raylib.Texture,
+	board_visits : map[int]int,
+	current_cell : int,
+	number_of_rolls : int,
+	comm_chest : int,
+	chance : int,
+	doubles : int,
+	speed : f32,
+}
+
+draw_menu :: proc(values: ^Values) {
+  using raylib
+
+  menu_rect := MENU_RECT
+  menu_rect.x = f32(values.width) - menu_rect.x
+  if !values.show_menu {
+    values.show_menu = GuiButton(Rectangle{f32(values.width) - 40, 13, 18, 18}, "_")
+  } else {
+    panel := GuiPanel(menu_rect, "")
+	  values.show_menu = !GuiButton(Rectangle{f32(values.width) - 40, 13, 18, 18}, "_")
+
+    GuiSlider(Rectangle{f32(values.width) - 185, 40, 160, 20}, "speed", "", &values.speed, 0, 1)
+    str := fmt.tprintf("%0.2v", values.speed)
+    cstr := strings.unsafe_string_to_cstring(str)
+    GuiTextBox(Rectangle{f32(values.width) - 185, 40, 160, 20}, cstr, 10, false)
+	}
+}
+
+draw_monopoly_board :: proc(values: ^Values) {
+	using raylib
+
+	// draw background board
+	DrawTexture(values.board_texture, 0, 0, WHITE)
+
+	// draw current cell
+	// cells start @4,5.. they are 39x36? with 1px black border.. 11x11 board (only corners and edges are cells)
+	cell_x : i32 = 0
+	cell_y : i32 = 0
+	cc := i32(values.current_cell)
+	if cc < 11 {
+		cell_x = cc
+	} else if cc < 21 {
+		cell_x = 10
+		cell_y = cc - 10
+	} else if cc < 31 {
+		cell_x = cc - 20
+		cell_x = 10-cell_x
+		cell_y = 10
+	} else {
+		cell_x = 0
+		cell_y = cc - 30
+		cell_y = 10-cell_y
+	}
+	DrawText("X", cell_x*40 + 6, cell_y*37 + 6, 10, BLACK)
+
+	// draw percentages for all cells
+	h1 := 0
+	h2 := 0
+	h3 := 0
+	for i in 0..<40 {
+		ii := i32(i)
+		if i < 11 {
+			cell_x = ii
+			cell_y = 0
+		} else if i < 21 {
+			cell_x = 10
+			cell_y = ii - 10
+		} else if i < 31 {
+			cell_x = ii - 20
+			cell_x = 10-cell_x
+			cell_y = 10
+		} else {
+			cell_x = 0
+			cell_y = ii - 30
+			cell_y = 10-cell_y
+		}
+		percent := f32(values.board_visits[i]) / f32(values.number_of_rolls)
+		percent_str := strings.unsafe_string_to_cstring(fmt.tprintf("%.2f", percent*100))
+		DrawText(percent_str, cell_x*40 + 13, cell_y*37 + 28, 10, RED)
+	}
+
+	// draw 6 digit code of 3 most highest percentage cells
+	highs := [3]int{0,0,0} // cells
+	hnums := [3]int{0,0,0} // number of visits to those cells
+	for k,v in values.board_visits {
+		if v >= hnums[0] {
+			hnums[2] = hnums[1]
+			hnums[1] = hnums[0]
+			hnums[0] = v
+			highs[2] = highs[1]
+			highs[1] = highs[0]
+			highs[0] = k
+		} else if v >= hnums[1] {
+			hnums[2] = hnums[1]
+			hnums[1] = v
+			highs[2] = highs[1]
+			highs[1] = k
+		} else if v >= hnums[2] {
+			hnums[2] = v
+			highs[2] = k
+		}
+	}
+	sixstr := fmt.tprintf("%02d%02d%02d", highs[0], highs[1], highs[2])
+	sixstr2 := fmt.tprintf("%v %v %v", MonopolyBoard(highs[0]), MonopolyBoard(highs[1]), MonopolyBoard(highs[2]))
+	DrawText(strings.unsafe_string_to_cstring(sixstr), 15, 430, 10, RED)
+	DrawText(strings.unsafe_string_to_cstring(sixstr2), 15, 455, 10, BLACK)
+	
+	return
+}
+
+roll_1d6 :: proc() -> int {
+	// roll a 1d6... returns 1..6
+	return int(rand.uint64() / (UINT64_MAX/6)) + 1
+}
+roll_1d4 :: proc() -> int {
+	// roll a 1d4... returns 1..4
+	return int(rand.uint64() / (UINT64_MAX/4)) + 1
+}
+
+resolve_roll :: proc(values: ^Values) {
+	assert(len(CommunityChest) == 16)
+	assert(len(Chance) == 16)
+
+	r1 := roll_1d4()
+	r2 := roll_1d4()
+	roll := r1 + r2
+	is_dbl := (r1 == r2)
+	values.number_of_rolls += 1
+	assert(r1 > 0 && r1 <= 6)
+	assert(r2 > 0 && r2 <= 6)
+
+	if is_dbl {
+		values.doubles += 1
+	} else {
+		values.doubles = 0 // must be consecutive
+	}
+
+	if values.doubles >= 3 {
+		values.current_cell = int(MonopolyBoard.JAIL)
+		values.doubles = 0
+	} else {
+		values.current_cell += roll
+		values.current_cell %= len(MonopolyBoard)
+	}
+
+	if MonopolyBoard(values.current_cell) == .G2J {
+		values.current_cell = int(MonopolyBoard.JAIL)
+	}
+	
+	if MonopolyBoard(values.current_cell) == .CC1 ||
+		MonopolyBoard(values.current_cell) == .CC2 ||
+		MonopolyBoard(values.current_cell) == .CC3 { // Community Chest
+			if CommunityChest(values.comm_chest) == .AdvToGo {
+				values.current_cell = int(MonopolyBoard.GO)
+			} else if CommunityChest(values.comm_chest) == .GoToJail {
+				values.current_cell = int(MonopolyBoard.JAIL)
+			}
+			values.comm_chest += 1
+			values.comm_chest %= len(CommunityChest)
+	}
+	if MonopolyBoard(values.current_cell) == .CH1 ||
+		MonopolyBoard(values.current_cell) == .CH2 ||
+		MonopolyBoard(values.current_cell) == .CH3 { // Chance
+			if Chance(values.chance) == .AdvToGo {
+				values.current_cell = int(MonopolyBoard.GO)
+			} else if Chance(values.chance) == .GoToJail {
+				values.current_cell = int(MonopolyBoard.JAIL)
+			} else if Chance(values.chance) == .GoToC1 {
+				values.current_cell = int(MonopolyBoard.C1)
+			} else if Chance(values.chance) == .GoToE3 {
+				values.current_cell = int(MonopolyBoard.E3)
+			} else if Chance(values.chance) == .GoToH2 {
+				values.current_cell = int(MonopolyBoard.H2)
+			} else if Chance(values.chance) == .GoToR1 {
+				values.current_cell = int(MonopolyBoard.R1)
+			} else if Chance(values.chance) == .GoToNextRail1 ||
+				Chance(values.chance) == .GoToNextRail2 {
+					if values.current_cell < int(MonopolyBoard.R1) {
+						values.current_cell = int(MonopolyBoard.R1)
+					} else if values.current_cell < int(MonopolyBoard.R2) {
+						values.current_cell = int(MonopolyBoard.R2)
+					} else if values.current_cell < int(MonopolyBoard.R3) {
+						values.current_cell = int(MonopolyBoard.R3)
+					} else if values.current_cell < int(MonopolyBoard.R4) {
+						values.current_cell = int(MonopolyBoard.R4)
+					} else {
+						values.current_cell = int(MonopolyBoard.R1)
+					}
+				} else if Chance(values.chance) == .GoToNextUtil {
+					if values.current_cell < int(MonopolyBoard.U1) {
+						values.current_cell = int(MonopolyBoard.U1)
+					} else if values.current_cell < int(MonopolyBoard.U2) {
+						values.current_cell = int(MonopolyBoard.U2)
+					} else {
+						values.current_cell = int(MonopolyBoard.U1)
+					}
+				} else if Chance(values.chance) == .GoBack3Squares {
+					values.current_cell -= 3
+				}
+			
+			values.chance += 1
+			values.chance %= len(Chance)
+		}
+
+	assert(values.current_cell >= 0 && values.current_cell < len(MonopolyBoard))
+	values.board_visits[values.current_cell] += 1
+}
+
+main :: proc() {
+	using raylib
+
+	ta := mem.Tracking_Allocator{};
+	mem.tracking_allocator_init(&ta, context.allocator);
+	context.allocator = mem.tracking_allocator(&ta);
+	defer {
+		if len(ta.allocation_map) > 0 {
+			for _, v in ta.allocation_map {
+				fmt.printf("Leaked %v bytes @ %v\n", v.size, v.location);
+			}
+		}
+		if len(ta.bad_free_array) > 0 {
+			fmt.println("Bad frees:");
+			for v in ta.bad_free_array {
+				fmt.println(v);
+			}
+		}
+	}
+	// ------------------------------
+	{
+		values : Values
+		values.show_menu = false
+		values.width = 600
+		values.height = 500
+		values.speed = 1
+
+
+		InitWindow(i32(values.width), i32(values.height), "Window_Title")
+		SetTargetFPS(60)
+
+		values.board_texture = LoadTexture("0084_monopoly_board.png")
+		board_cell_names := reflect.enum_field_names(MonopolyBoard)
+		defer delete(values.board_visits)
+
+		cnt : f32 = 60
+		for !WindowShouldClose() {
+			// Update ------------------------------
+			if cnt <= 0 {
+				for i:=0; i>=int(cnt); i-=1 {
+					resolve_roll(&values)
+				}
+				cnt = 60
+			} else {
+				cnt -= (values.speed * 10_000 + 1)
+			}
+			
+			// Draw   ------------------------------
+			BeginDrawing()
+			ClearBackground(WHITE)
+
+			draw_monopoly_board(&values)
+			draw_menu(&values)
+			
+			EndDrawing()
+		}
+		//fmt.println(int(MonopolyBoard.E3))
+		CloseWindow()
+	}
+}
+#+end_src
