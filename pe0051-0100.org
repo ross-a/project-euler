@@ -6133,3 +6133,96 @@ main :: proc() {
 	}
 }
 #+end_src
+* Prob 085 - Counting Rectangles
+** prob p85
+By counting carefully it can be seen that a rectangular grid measuring $3$ by
+$2$ contains eighteen rectangles:
+
+[[file:src/0085.png]]
+
+Although there exists no rectangular grid that contains exactly two million
+rectangles, find the area of the grid with the nearest solution.
+
+      1  2h  3h  2v  2x2  3x2
+------------------------------      
+2x1 = 2 + 1                    = 3
+2x2 = 4 + 2     + 2 + 1        = 9
+
+3x1 = 3 + 2 + 1                = 6
+3x2 = 6 + 4 + 2 + 3 + 2 + 1    = 18
+------------------------------
+
+4x1 = 4 + 3 + 2 + 1            = 10 --
+4x2 = 8 + 6 + 4 + 2    + 4 + 3 + 2 + 1 = 30
+4x3 = 12 + 9 + 6 + 3   + 8 + 6 + 4 + 2   + 4 + 3 + 2 + 1 = 60
+4x4 = 16 + 12 + 8 + 4  + 12 + 9 + 6 + 3  + 8 + 6 + 4 + 2  + 4 + 3 + 2 + 1 = 100
+
+Kx1 = \Sigma(K to 1)
+KxJ = \Sigma(K to 1) * J + Kx(J-1)
+
+** code p85
+#+begin_src odin :main no :comments link :tangle src/counting_rectangles.odin
+package counting_rectangles
+
+import "core:fmt"
+import "core:math"
+
+sum :: proc(k: int) -> int {
+	// sum 1..=k
+	//          v overflows?
+	sum := (k * (1 + k)) / 2
+	//sum := (k/2) + (k/2*k)
+	assert(sum > 0)
+	return sum
+}
+// Kx1 = \Sigma(K to 1)
+// KxJ = J * \Sigma(K to 1) + Kx(J-1)
+// K is width(# of columns) and J is height(# of rows)
+cnt_rects :: proc(k: int, j: int, prev: int) -> int {
+	s := sum(k)
+	cnt := j * s + prev
+	assert(cnt > 0)
+	return cnt
+}
+
+main :: proc() {
+	nearest := 2_000_000 // nearest so far
+	nearest_x, nearest_y := 0,0
+	two_mil :: 2_000_000
+
+ 	NOF :: 20
+	found : [NOF]bool // to poop out after not finding a nearest after NOF tries
+  fshift :: proc(f: ^[NOF]bool) {
+		for i in 0..<(NOF-1) {
+			f[i] = f[i+1]
+		}
+		f[NOF-1] = false
+	}
+	ffalse :: proc(f: ^[NOF]bool) -> bool {
+		for i in 0..<NOF {
+			if f[i] do return true
+		}
+		return false
+	}
+	
+	for x:=1;; x+=1 { // inf loop
+		prev := sum(x)
+		//fmt.println(x,1,prev)
+		for y:=2; y<=x; y+=1 {
+			cnt := cnt_rects(x, y, prev)
+			dist := math.abs(two_mil - cnt)
+			if dist < nearest {
+				nearest = dist
+				nearest_x = x
+				nearest_y = y
+				found[NOF-1] = true
+			}
+			prev = cnt
+			//fmt.println(x,y, cnt)
+		}
+		fshift(&found)
+		if x > 1 && !ffalse(&found) do break
+	}
+	fmt.println(nearest_x, nearest_y, nearest_x * nearest_y)
+}
+#+end_src
