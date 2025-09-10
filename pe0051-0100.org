@@ -6326,15 +6326,6 @@ import "core:fmt"
 import "core:math"
 import "../util"
 
-//  $$\begin{aligned}
-//  28 &= 2^2 + 2^3 + 2^4 \\
-//  33 &= 3^2 + 2^3 + 2^4 \\
-//  49 &= 5^2 + 2^3 + 2^4 \\
-//  47 &= 2^2 + 3^3 + 2^4
-//  \end{aligned}$$
-
-// ^ four nums below 50 with this property
-
 root_n_guess :: proc(num: int, n: int) -> int {
 	for i in 1..<num/2 {
 		if math.pow(f32(i), f32(n)) > f32(num) {
