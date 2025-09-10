@@ -6226,3 +6226,79 @@ main :: proc() {
 	fmt.println(nearest_x, nearest_y, nearest_x * nearest_y)
 }
 #+end_src
+* Prob 086 - Cuboid Route
+** prob p86
+A spider, S, sits in one corner of a cuboid room, measuring $6$ by $5$ by $3$,
+and a fly, F, sits in the opposite corner. By travelling on the surfaces of the
+room the shortest "straight line" distance from S to F is $10$ and the path is
+shown on the diagram.
+
+[[file:src/0086.png]]
+
+However, there are up to three "shortest" path candidates for any given cuboid
+and the shortest route doesn't always have integer length.
+
+It can be shown that there are exactly $2060$ distinct cuboids, ignoring
+rotations, with integer dimensions, up to a maximum size of $M$ by $M$ by $M$,
+for which the shortest route has integer length when $M = 100$. This is the
+least value of $M$ for which the number of solutions first exceeds two thousand;
+the number of solutions when $M = 99$ is $1975$.
+
+Find the least value of $M$ such that the number of solutions first exceeds one
+million.
+
+
+spider dist = sqrt( 6^2 + (5+3)^2 ) = 10
+think: "unfold" / "lay flat" a cardboard box and connect points with straight line
+
+** code p86
+#+begin_src odin :main no :comments link :tangle src/cuboid_route.odin
+package cuboid_route
+
+import "core:fmt"
+import "core:container/rbtree"
+
+// x > y > z
+// when is:  sqrt( x^2 + (y+z)^2 ) = an integer?
+// when x^2 + (y+z)^2 is in a list of squares?
+
+// red/black tree used for squares in an effort to speed things up
+// not sure if it is even worth it though =(
+make_squares_tree :: proc(size: int, ret: ^rbtree.Tree(int,int)) {
+	for i:=1; i<=size; i+=1 {
+		sqr := i*i
+		rbtree.find_or_insert(ret, sqr, sqr)
+	}
+}
+
+main :: proc() {
+	MSIZE :: 100_000 // 99
+	ONEMIL :: 1_000_000
+	
+	sqr_tree : rbtree.Tree(int,int)
+	rbtree.init(&sqr_tree)
+	make_squares_tree(3*MSIZE, &sqr_tree) // just guessing 3*MSIZE should be enuf!
+
+	M := 0
+	cnt := 0
+	found := false
+	//for M=1; M<=MSIZE; M+=1 {
+	for M=1; !found; M+=1 {
+		x := M
+		for y:=1; y<=x; y+=1 {
+			for z:=1; z<=y; z+=1 {
+				num := x*x + (y+z)*(y+z)
+				isin := rbtree.find(&sqr_tree, num)
+				if isin != nil {
+					//fmt.println(x, y, z,"  ", num)
+					cnt += 1
+					if cnt > ONEMIL {
+						found = true
+					}
+				}
+			}
+		}
+	}
+	fmt.println(M-1, cnt)
+}
+#+end_src
