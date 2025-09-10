@@ -4650,7 +4650,7 @@ separated into piles. For example, five coins can be separated into piles in
 exactly seven different ways, so $p(5)=7$.
 
 $$\begin{aligned}
-&OOOOO~~~ \\
+&OOOOO~~~ \\\\
 &OOOO~~~O \\
 &OOO~~~OO \\
 &OOO~~~O~~~O \\
@@ -6300,5 +6300,81 @@ main :: proc() {
 		}
 	}
 	fmt.println(M-1, cnt)
+}
+#+end_src
+* Prob 087 - Prime Power Triples
+** prob p87
+The smallest number expressible as the sum of a prime square, prime cube, and
+prime fourth power is $28$. In fact, there are exactly four numbers below fifty
+that can be expressed in such a way:
+
+$$\begin{aligned}
+28 &= 2^2 + 2^3 + 2^4 \\
+33 &= 3^2 + 2^3 + 2^4 \\
+49 &= 5^2 + 2^3 + 2^4 \\
+47 &= 2^2 + 3^3 + 2^4
+\end{aligned}$$
+
+How many numbers below fifty million can be expressed as the sum of a prime
+square, prime cube, and prime fourth power?
+
+** code p87
+#+begin_src odin :main no :comments link :tangle src/prime_power_triples.odin
+package prime_power_triples
+
+import "core:fmt"
+import "core:math"
+import "../util"
+
+//  $$\begin{aligned}
+//  28 &= 2^2 + 2^3 + 2^4 \\
+//  33 &= 3^2 + 2^3 + 2^4 \\
+//  49 &= 5^2 + 2^3 + 2^4 \\
+//  47 &= 2^2 + 3^3 + 2^4
+//  \end{aligned}$$
+
+// ^ four nums below 50 with this property
+
+root_n_guess :: proc(num: int, n: int) -> int {
+	for i in 1..<num/2 {
+		if math.pow(f32(i), f32(n)) > f32(num) {
+			return i-1
+		}
+	}
+	return 0
+}
+
+main :: proc() {
+	BELOW :: 50_000_000
+	nums : map[int]([3]int)
+	
+	i := 2
+	j := 2
+	k := 2
+
+	iMAX := root_n_guess(BELOW, 2)
+	jMAX := root_n_guess(BELOW, 3)
+	kMAX := root_n_guess(BELOW, 4)
+	
+	for ; k<=kMAX; {
+		j = 2
+		for ; j<=jMAX; {
+			i = 2
+			for ; i<=iMAX; {
+				//fmt.println("testing", i, j, k)
+				equ := i*i + j*j*j + k*k*k*k
+				if equ < BELOW {
+					nums[equ] = [3]int{i,j,k}
+				}
+				i += 1
+				for ; !util.is_prime(i); i+=1 {} // set i to next prime
+			}
+			j += 1
+			for ; !util.is_prime(j); j+=1 {} // set j to next prime
+		}
+		k += 1
+		for ; !util.is_prime(k); k+=1 {} // set k to next prime
+	}
+	fmt.println(len(nums))
 }
 #+end_src
