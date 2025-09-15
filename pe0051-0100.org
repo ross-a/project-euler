@@ -6369,3 +6369,228 @@ main :: proc() {
 	fmt.println(len(nums))
 }
 #+end_src
+* Prob 088 - Product-sum Numbers
+** prob p88
+A natural number, $N$, that can be written as the sum and product of a given set
+of at least two natural numbers, $\{a_1, a_2, \dots, a_k\}$ is called a product-sum
+number: $N = a_1 + a_2 + \cdots + a_k = a_1 \times a_2 \times \cdots \times a_k$.
+
+For example, $6 = 1 + 2 + 3 = 1 \times 2 \times 3$.
+
+For a given set of size, $k$, we shall call the smallest $N$ with this property
+a minimal product-sum number. The minimal product-sum numbers for sets of size,
+$k = 2, 3, 4, 5$, and $6$ are as follows.
+
+- $k=2$: $4 = 2 \times 2 = 2 + 2$
+- $k=3$: $6 = 1 \times 2 \times 3 = 1 + 2 + 3$
+- $k=4$: $8 = 1 \times 1 \times 2 \times 4 = 1 + 1 + 2 + 4$
+- $k=5$: $8 = 1 \times 1 \times 2 \times 2 \times 2 = 1 + 1 + 2 + 2 + 2$
+- $k=6$: $12 = 1 \times 1 \times 1 \times 1 \times 2 \times 6 = 1 + 1 + 1 + 1 + 2 + 6
+
+Hence for $2 \le k \le 6$, the sum of all the minimal product-sum numbers is
+$4+6+8+12 = 30$; note that $8$ is only counted once in the sum.
+
+In fact, as the complete set of minimal product-sum numbers for $2 \le k \le 12$ is
+$\{4, 6, 8, 12, 15, 16\}$, the sum is $61$.
+
+What is the sum of all the minimal product-sum numbers for $2 \le k \le 12000$?
+
+** code p88
+#+begin_src odin :main no :comments link :tangle src/product_sum_numbers.odin
+package product_sum_numbers
+
+import "core:fmt"
+import "core:math"
+import "core:slice"
+import "../util"
+
+// speed up ideas:
+
+// a set with a ,4 will make the *next* set be the same but with ,2,2 ?
+// so might as well just skip the next (it'll be the same sum at end)
+// TODO: if there is more than 1 ,4 we can skip multiple times ??
+
+// also, every series has atleast 1,1,1,...,2,k as a solution, where k=len(series)
+// but that might not be minimal
+
+// also, if the sum is a prime then no series of mul's will ever equal that
+// borrow/carry all you want there won't be a solution there
+
+// factorization idea: go from i in 2..=2k fake making factorizations for i
+// then pair up that factorization key (using prod-sum+#o'factors=map key)
+// example:
+// i = 8
+// factorization of 8 is: 2*4 and 2*2*2:
+// 2*4=8  2+4=6  num_of_factors=2... therefore: 8-6+2=4
+// and map[8]=4
+// 2*2*2=8  2+2+2=6 num_of_factors=3... 8-6+3=5
+// and map[8] already there ignore map[8]=5
+
+largest_square :: proc(n: int) -> int {
+	// return largest number that when squared is less than n
+	for i:=2; ; i+=1 {
+		ii := i*i
+		if ii == n {
+			return i
+		} else if ii > n {
+			return i-1
+		}
+	}
+}
+
+split_factor :: proc(f: int) -> (good: bool, ret: [2]int) {
+	// splits a factor up into 2 smaller factors ex: 4 -> 2,2
+	good = false
+	if util.is_prime(f) {
+		return
+	}
+	for i:=2; ; i+=1 {
+		if f % i == 0 {
+			ret[0] = f/i
+			ret[1] = i
+			good = true
+			return
+		}
+	}
+}
+
+do_other_factors :: proc(n: int, fac: [dynamic]int, factors: ^map[int]([dynamic][dynamic]int)) -> bool {
+	if len(fac) > 2 {
+		ret := new([dynamic][]int); defer free(ret)
+		util.iterative_get_combinations(fac[:], 2, ret)
+		// dup factors, remove both combinations, then add back product of the 2 combos, maybe
+		
+		if len(ret) > 0 {
+			for combo in ret {
+				dup_fac : [dynamic]int
+				for f in fac {
+					append(&dup_fac, f)
+				}
+				remove := [2]int{0, 0}
+				got := [2]bool{false, false}
+				for i in 0..<2 {
+					remove[i] = combo[i]
+					got[i] = false
+					for f,idx in dup_fac {
+						if !got[i] && f == remove[i] {
+							ordered_remove(&dup_fac, idx)
+							got[i] = true
+						}
+					}
+				}
+				assert(got[0] && got[1])
+				append(&dup_fac, remove[0] * remove[1])
+				slice.sort(dup_fac[:])
+
+				sum := 0
+				for d in dup_fac {
+					sum += d
+				}
+				tmp := n - sum + len(dup_fac)
+
+				already_have := false
+				if !(tmp in factors) {
+					factors[tmp] = nil
+				} else {
+					for f in factors[tmp] {
+						// already have this factor list?
+						idx2 := 0
+						for d,idx in f {
+							if idx > len(dup_fac) || d != dup_fac[idx] {
+								break
+							}
+							idx2 = idx
+						}
+						if (idx2+1) == len(dup_fac) {
+							already_have = true
+						}
+					}
+				}
+				if !already_have {
+					append(&factors[tmp], nil)
+					idx := len(factors[tmp]) - 1
+					
+					factors[tmp][idx] = nil
+					for d in dup_fac {
+						append(&factors[tmp][idx], d)
+					}
+					
+					do_other_factors(n, dup_fac, factors) // also do it recurrsive, maybe
+				}
+			}
+		}
+	}
+	
+	return true
+}
+get_different_factors :: proc(n: int, factors: ^map[int]([dynamic][dynamic]int)) -> bool {
+	MAX :: 24_000
+	@static lines: [dynamic]string
+	if len(lines) == 0 {
+		util.make_prime_factorizations(MAX, &lines)
+	}
+
+  // get prime factorization of n
+  pf := util.get_prime_factorization(lines[n])
+	sum  := 0
+	factor_cnt := 0
+	for p in pf {
+		sum += p.prime*p.power
+		factor_cnt += p.power
+	}
+	tmp := n - sum + factor_cnt
+	factors[tmp] = nil
+	append(&factors[tmp], nil)
+	for p in pf {
+		for i in 0..<p.power { // add same p.prime over and over, for each power
+			append(&factors[tmp][0], p.prime)
+		}
+	}
+
+	do_other_factors(n, factors[tmp][0], factors)
+
+	return true
+}
+
+main :: proc() {
+	kMIN :: 2
+	kMAX :: 12_000
+	Ks : map[int]int
+	Vs : map[int]int
+
+	for i in kMIN..=2*kMAX {
+		if util.is_prime(i) {
+			continue
+		}
+		
+		factors : map[int]([dynamic][dynamic]int)
+		get_different_factors(i, &factors)
+
+		//fmt.println("factors for", i, ":", factors)
+		for k,v in factors {
+			for vv in v {
+				prod := i
+				if !(k in Ks) || Ks[k] > prod {
+					//fmt.println("Ks add", k, "=", prod, "  ", vv)
+					Ks[k] = prod
+				}
+			}
+		}
+		
+		clear(&factors)
+	}
+
+	for k,v in Ks {
+		if k <= kMAX {
+			Vs[v] = k
+		}
+	}
+	
+	vcnt := 0
+	for kv, _ in Vs {
+		vcnt += kv
+	}
+	//fmt.println(Vs, vcnt)
+	fmt.println(vcnt)
+}
+#+end_src
